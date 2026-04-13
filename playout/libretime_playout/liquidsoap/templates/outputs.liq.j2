@@ -57,9 +57,10 @@ output_icecast_{{ output_id }}_source = mean(s)
 # Disable ogg metadata
 output_icecast_{{ output_id }}_source = add(normalize=false, [amplify(0.00001, noise()), output_icecast_{{ output_id }}_source])
 {% endif -%}
-{#- LS 2.3: tiny noise + infallible encoder input avoids Icecast mount drop/reconnect when s glitches. #}
+{#- LS 2.3: tiny noise keeps encoder infallible; music source must be FIRST in add() so ICY/metadata #}
+{#- follow the schedule (Liquidsoap add() takes metadata from the first child). #}
 {% if not (output.audio.format == "ogg" and not output.audio.enable_metadata) -%}
-output_icecast_{{ output_id }}_source = add(normalize=false, [amplify(0.00001, noise()), output_icecast_{{ output_id }}_source])
+output_icecast_{{ output_id }}_source = add(normalize=false, [output_icecast_{{ output_id }}_source, amplify(0.00001, noise())])
 {% endif -%}
 
 output.icecast(
@@ -91,7 +92,7 @@ output_shoutcast_{{ output_id }}_source = s
 {% else -%}
 output_shoutcast_{{ output_id }}_source = mean(s)
 {% endif -%}
-output_shoutcast_{{ output_id }}_source = add(normalize=false, [amplify(0.00001, noise()), output_shoutcast_{{ output_id }}_source])
+output_shoutcast_{{ output_id }}_source = add(normalize=false, [output_shoutcast_{{ output_id }}_source, amplify(0.00001, noise())])
 
 output.shoutcast(
   id="shoutcast:{{ output_id }}",
