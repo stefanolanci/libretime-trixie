@@ -1,8 +1,13 @@
 # Local-only helpers at repo root (SQL/telnet dumps, etc.)
 /scripts/
 
-.DS_Store
+# IDE / OS noise (not needed for ./install from a clean clone)
+.cursor/
+.vscode/
 .idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
 *~
 
 .env

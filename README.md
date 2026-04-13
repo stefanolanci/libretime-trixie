@@ -60,6 +60,10 @@ cd libretime
 
 **Option B — Archive** without `.git`: ensure a `VERSION` file exists in the tree root (otherwise `make VERSION` produces a generic placeholder).
 
+### What `./install` uses from the tree
+
+The root **`install`** script consumes **`installer/`** (templates, Nginx, Icecast, `config.yml` example, systemd target), **`tools/packages.py`**, **`tools/version.sh`** (via `make VERSION` when needed), and the application directories **`shared/`**, **`api-client/`**, **`api/`**, **`playout/`**, **`analyzer/`**, **`worker/`**, **`legacy/`**, plus root **`VERSION`**. Everything else under **`tools/`** (PowerShell deploy, align-from-checkout, SQL checks, stream diagnostics, optional systemd snippets) is **for operators or development** and is **not** run by `./install`; you can keep it in the clone without affecting a fresh install.
+
 ---
 
 ## Installation
@@ -68,6 +72,8 @@ From the repository root, make scripts executable if needed (ZIP, copies from Wi
 
 ```bash
 chmod +x install tools/version.sh installer/uninstall-libretime.sh
+# optional, if you use shell helpers from the clone:
+chmod +x tools/diagnose-stream-chain.sh tools/stream-level-once.sh tools/align-running-install-from-here.sh
 ```
 
 ### Basic usage
@@ -237,6 +243,8 @@ sudo journalctl -u libretime-api -u libretime-playout -u libretime-liquidsoap \
 ```
 
 Text logs: `/var/log/libretime/` (`legacy.log`, `playout.log`, `analyzer.log`, …).
+
+On a host that still has this repository checked out, **`tools/diagnose-stream-chain.sh`** walks systemd, Icecast `status-json`, recent playout/Liquidsoap journal lines, and only then runs a short PCM probe — useful before interpreting stream level warnings.
 
 ---
 
