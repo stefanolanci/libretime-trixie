@@ -62,7 +62,7 @@ cd libretime
 
 ### What `./install` uses from the tree
 
-The root **`install`** script consumes **`installer/`** (templates, Nginx, Icecast, `config.yml` example, systemd target), **`tools/packages.py`**, **`tools/version.sh`** (via `make VERSION` when needed), and the application directories **`shared/`**, **`api-client/`**, **`api/`**, **`playout/`**, **`analyzer/`**, **`worker/`**, **`legacy/`**, plus root **`VERSION`**. Everything else under **`tools/`** (PowerShell deploy, align-from-checkout, SQL checks, stream diagnostics, optional systemd snippets) is **for operators or development** and is **not** run by `./install`; you can keep it in the clone without affecting a fresh install.
+The root **`install`** script consumes **`installer/`** (templates, Nginx, Icecast, `config.yml` example, systemd target), **`tools/packages.py`**, **`tools/version.sh`** (via `make VERSION` when needed), and the application directories **`shared/`**, **`api-client/`**, **`api/`**, **`playout/`**, **`analyzer/`**, **`worker/`**, **`legacy/`**, plus root **`VERSION`**. The published repository includes **only** those two files under **`tools/`**; optional helpers (deploy scripts, SQL checks, stream diagnostics, extra systemd snippets, Windows checksum helper) are **not** shipped—add them locally if you use them. They are **not** run by `./install`.
 
 ---
 
@@ -244,7 +244,7 @@ sudo journalctl -u libretime-api -u libretime-playout -u libretime-liquidsoap \
 
 Text logs: `/var/log/libretime/` (`legacy.log`, `playout.log`, `analyzer.log`, …).
 
-On a host that still has this repository checked out, **`tools/diagnose-stream-chain.sh`** walks systemd, Icecast `status-json`, recent playout/Liquidsoap journal lines, and only then runs a short PCM probe — useful before interpreting stream level warnings.
+If you maintain a local copy of a stream diagnostic script (e.g. one that walks systemd, Icecast `status-json`, and playout/Liquidsoap journals before a short PCM probe), use it alongside the journal commands above.
 
 ---
 

@@ -1,6 +1,19 @@
 # Local-only helpers at repo root (SQL/telnet dumps, etc.)
 /scripts/
 
+# Diagnose / deploy / ops — not used by ./install; keep in your clone locally
+/tools/align-running-install-from-here.sh
+/tools/check_schedule.sql
+/tools/check_show_start.sql
+/tools/deploy-test-vps.ps1
+/tools/diagnose-stream-chain.sh
+/tools/fix-nginx-authorization-remote.sh
+/tools/remote-test-api-version.sh
+/tools/stream-level-once.sh
+/tools/update-assets-checksums.ps1
+/tools/verify-installed-playout-liq.sh
+/tools/systemd/
+
 # IDE / OS noise (not needed for ./install from a clean clone)
 .cursor/
 .vscode/
