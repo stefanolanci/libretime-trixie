@@ -15,5 +15,6 @@ if (-not (Test-Path -LiteralPath $PpkPath)) {
     Write-Error "Chiave .ppk non trovata: $PpkPath"
 }
 
-$remoteCmd = "set -e; cd `"$RemoteRepoDir`" && git pull origin main && bash tools/align-running-install-from-here.sh"
+# fetch + reset keeps VPS in sync after history rewrite (git pull can fail on divergent branches).
+$remoteCmd = "set -e; cd `"$RemoteRepoDir`" && git fetch origin main && git reset --hard origin/main && bash tools/align-running-install-from-here.sh"
 & $PlinkPath -batch -ssh -i $PpkPath $RemoteUserHost $remoteCmd
