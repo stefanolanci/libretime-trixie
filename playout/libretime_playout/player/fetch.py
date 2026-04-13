@@ -167,7 +167,7 @@ class PypoFetch(Thread):
             logger.exception(exception)
 
     # Initialize Liquidsoap environment
-    def set_bootstrap_variables(self) -> None:
+    def set_bootstrap_variables(self, *, defer_schedule: bool = False) -> None:
         logger.debug("Getting information needed on bootstrap from LibreTime API")
         try:
             info = Info(**self.api_client.get_info().json())
@@ -193,8 +193,23 @@ class PypoFetch(Thread):
                 input_fade_transition=preferences.input_fade_transition,
             )
 
-            # Harbor only when switch on and encoder connected (same rule as switch_source).
-            self.apply_liquidsoap_stream_switches(state)
+            if defer_schedule:
+                # Bootstrap only: apply harbor switches but keep schedule off.
+                # Schedule activation is deferred until after PypoPush has pushed
+                # the first present tracks into Liquidsoap's request.queue, so that
+                # the switch:blank+schedule transition does not consume (and lose)
+                # the first track's metadata before amplify can read it (LS 2.3
+                # metadata race on first track after switch).
+                deferred_state = StreamState(
+                    input_main_connected=state.input_main_connected,
+                    input_main_streaming=state.input_main_streaming,
+                    input_show_connected=state.input_show_connected,
+                    input_show_streaming=state.input_show_streaming,
+                    schedule_streaming=False,
+                )
+                self.apply_liquidsoap_stream_switches(deferred_state)
+            else:
+                self.apply_liquidsoap_stream_switches(state)
 
         except OSError as exception:
             logger.exception(exception)
@@ -352,7 +367,10 @@ class PypoFetch(Thread):
         # Liquidsoap is playing much more easily.
         self.liquidsoap.clear_all_queues()
 
-        self.set_bootstrap_variables()
+        # defer_schedule=True: harbor switches are applied but schedule_streaming
+        # stays false.  PypoPush activates it after pushing present tracks (see
+        # post_present_media_sync callback wired in main.py).
+        self.set_bootstrap_variables(defer_schedule=True)
 
         self.update_metadata_on_tunein()
 

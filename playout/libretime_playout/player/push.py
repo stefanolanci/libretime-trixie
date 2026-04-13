@@ -62,8 +62,12 @@ class PypoPush(Thread):
             if (
                 self._post_present_media_sync is not None
                 and not self._post_present_media_sync_done
-                and currently_playing
             ):
+                # Fire after the first verify_correct_present_media regardless of
+                # whether present tracks exist: if they do, they are already in
+                # Liquidsoap's request.queue; if not, the queue is empty and
+                # activating the schedule switch is harmless (no first-track
+                # metadata to lose).
                 self._post_present_media_sync_done = True
                 try:
                     self._post_present_media_sync()

@@ -147,10 +147,17 @@ def cli(
         legacy_client,
     )
 
+    def _activate_schedule():
+        logger.info(
+            "Bootstrap: activating schedule_streaming after first media sync"
+        )
+        liquidsoap.telnet_liquidsoap.switch_source("scheduled_play", "on")
+
     PypoPush(
         push_queue,
         liquidsoap,
         config,
+        post_present_media_sync=_activate_schedule,
     ).start()
     fetch_thread.start()
 
