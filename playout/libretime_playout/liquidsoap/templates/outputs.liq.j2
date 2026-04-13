@@ -75,8 +75,8 @@ output.icecast(
   description={{ (output.description or '') | quote }},
   genre={{ (output.genre or '') | quote }},
   url={{ (output.website or '') | quote }},
-  on_connect=make_ouput_on_connect_handler("{{ output_id }}"),
-  on_error=make_ouput_on_error_handler("{{ output_id }}"),
+  on_connect=make_output_on_connect_handler("{{ output_id }}"),
+  on_error=make_output_on_error_handler("{{ output_id }}"),
   {{ icecast_encoder(output.audio) | indent(width=2) }},
   output_icecast_{{ output_id }}_source,
 )
@@ -111,8 +111,8 @@ output.shoutcast(
   name={{ (output.description or '') | quote }},
   genre={{ (output.genre or '') | quote }},
   url={{ (output.website or '') | quote }},
-  on_connect=make_ouput_on_connect_handler("{{ output_id }}"),
-  on_error=make_ouput_on_error_handler("{{ output_id }}"),
+  on_connect=make_output_on_connect_handler("{{ output_id }}"),
+  on_error=make_output_on_error_handler("{{ output_id }}"),
 {#-
   The config validation will prevent from using incompatible audio encoders
 #}

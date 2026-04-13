@@ -103,10 +103,11 @@ class MessageListener:
         logger.info("Received '%s' on routing_key '%s'", body, method_frame.routing_key)
 
         audio_file_path = ""
-        # final_file_path = ""
         import_directory = ""
         original_filename = ""
         file_id = ""
+        callback_url = None
+        callback_api_key = None
 
         try:
             try:
@@ -149,7 +150,7 @@ class MessageListener:
                 requeue=False,
             )
 
-            if file_id:
+            if file_id and callback_url is not None:
                 StatusReporter.report_failure(
                     callback_url,
                     callback_api_key,

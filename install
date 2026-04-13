@@ -87,8 +87,8 @@ Environment variables:
 
 EOF
 
-  while read line; do
-    if echo "$line" | grep -q '^#'; then
+  while IFS= read -r line; do
+    if [[ "$line" == \#* ]]; then
       line="${cyan}${line}${reset}"
     fi
 
@@ -245,17 +245,24 @@ LIBRETIME_CERTBOT_EMAIL=${LIBRETIME_CERTBOT_EMAIL:-}
 LIBRETIME_ICECAST_HTTPS_PORT=${LIBRETIME_ICECAST_HTTPS_PORT:-8443}
 LIBRETIME_WIZARD=false
 
+require_arg() {
+  [[ $# -ge 2 ]] || error "option '$1' requires a value"
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --user | -u)
+      require_arg "$@"
       LIBRETIME_USER=$2
       shift 2
       ;;
     --listen-port | -p)
+      require_arg "$@"
       LIBRETIME_LISTEN_PORT=$2
       shift 2
       ;;
     --storage-path | -s)
+      require_arg "$@"
       LIBRETIME_STORAGE_PATH=$2
       shift 2
       ;;
@@ -287,6 +294,7 @@ while [[ $# -gt 0 ]]; do
       shift 1
       ;;
     --packages-excludes)
+      require_arg "$@"
       LIBRETIME_PACKAGES_EXCLUDES=$2
       shift 2
       ;;
@@ -569,6 +577,13 @@ fi
 
 if $LIBRETIME_WIZARD && ! $is_first_install; then
   error "--wizard is only for the first install. To upgrade, run $0 without --wizard (same arguments as the original install) or edit $CONFIG_FILEPATH."
+fi
+
+if $is_first_install && ! $LIBRETIME_WIZARD && [[ -z "${LIBRETIME_PUBLIC_URL:-}" ]]; then
+  error "first install requires a public URL or --wizard. Examples:
+  $0 http://192.168.1.10:8080
+  $0 https://radio.example.org
+  $0 --wizard"
 fi
 
 if $LIBRETIME_WIZARD; then

@@ -7,7 +7,7 @@ function setSmartBlockEvents() {
     form = activeTab.find(".smart-block-form");
 
   /********** ADD CRITERIA ROW **********/
-  form.find("#criteria_add").live("click", function () {
+  form.on("click", "#criteria_add", function () {
     var div = $('dd[id="sp_criteria-element"]').children("div:visible:last");
 
     if (div.length == 0) {
@@ -42,7 +42,7 @@ function setSmartBlockEvents() {
   });
 
   /********** ADD MODIFIER ROW **********/
-  form.find('a[id^="modifier_add"]').live("click", function () {
+  form.on("click", 'a[id^="modifier_add"]', function () {
     var criteria_value = $(this)
       .siblings('select[name^="sp_criteria_field"]')
       .val();
@@ -91,7 +91,7 @@ function setSmartBlockEvents() {
   });
 
   /********** REMOVE ROW **********/
-  form.find('a[id^="criteria_remove"]').live("click", function () {
+  form.on("click", 'a[id^="criteria_remove"]', function () {
     var curr = $(this).parent();
     var curr_pos = curr.index();
     var list = curr.parent();
@@ -366,17 +366,17 @@ function setSmartBlockEvents() {
   // moved to spl.js
 
   /********** GENERATE ACTION **********/
-  activeTab.find('button[id="generate_button"]').live("click", function () {
+  activeTab.on("click", 'button[id="generate_button"]', function () {
     buttonClickAction("generate", "playlist/smart-block-generate");
   });
 
   /********** SHUFFLE ACTION **********/
-  activeTab.find('button[id="shuffle_button"]').live("click", function () {
+  activeTab.on("click", 'button[id="shuffle_button"]', function () {
     buttonClickAction("shuffle", "playlist/smart-block-shuffle");
   });
 
   /********** CHANGE PLAYLIST TYPE **********/
-  form.find('dd[id="sp_type-element"]').live("change", function () {
+  form.on("change", 'dd[id="sp_type-element"]', function () {
     //buttonClickAction('generate', 'playlist/empty-content');
     $(".active-tab").find('button[id="save_button"]').click();
     setupUI();
@@ -384,7 +384,7 @@ function setSmartBlockEvents() {
   });
 
   /********** LIMIT CHANGE *************/
-  form.find('select[id="sp_limit_options"]').live("change", function () {
+  form.on("change", 'select[id="sp_limit_options"]', function () {
     var limVal = form.find('input[id="sp_limit_value"]');
     if ($(this).val() === "remaining") {
       disableAndHideLimitValue();
@@ -394,11 +394,10 @@ function setSmartBlockEvents() {
   });
 
   /********** CRITERIA CHANGE **********/
-  form
-    .find(
-      'select[id^="sp_criteria"]:not([id^="sp_criteria_modifier"]):not([id^="sp_criteria_datetime"]):not([id^="sp_criteria_extra_datetime"]):not([id^="sp_criteria_value"])',
-    )
-    .live("change", function () {
+  form.on(
+    "change",
+    'select[id^="sp_criteria"]:not([id^="sp_criteria_modifier"]):not([id^="sp_criteria_datetime"]):not([id^="sp_criteria_extra_datetime"]):not([id^="sp_criteria_value"])',
+    function () {
       var index = getRowIndex($(this).parent());
       //need to change the criteria value for any modifier rows
       var critVal = $(this).val();
@@ -432,13 +431,12 @@ function setSmartBlockEvents() {
     });
 
   /********** MODIFIER CHANGE **********/
-  form.find('select[id^="sp_criteria_modifier"]').live("change", function () {
+  form.on("change", 'select[id^="sp_criteria_modifier"]', function () {
     var criteria_value = $(this).next(),
       index_num = getRowIndex($(this).parent());
 
     if ($(this).val().match("before|after")) {
       enableAndShowDateTimeDropdown(criteria_value, index_num);
-      console.log($(this).val());
     } else {
       disableAndHideDateTimeDropdown(criteria_value, index_num);
       disableAndHideExtraDateTimeDropdown(criteria_value, index_num);
@@ -746,7 +744,6 @@ function setupUI() {
 }
 
 function enableAndShowTracktypeDropdown(valEle, index) {
-  console.log("tracktype show");
   $("#sp_criteria_value_" + index).replaceWith(
     '<select name="sp_criteria_value_' +
       index +
@@ -762,7 +759,6 @@ function enableAndShowTracktypeDropdown(valEle, index) {
 }
 
 function disableAndHideTracktypeDropdown(valEle, index) {
-  console.log("tracktype hide");
   $("#sp_criteria_value_" + index).replaceWith(
     '<input type="text" name="sp_criteria_value_' +
       index +
@@ -776,7 +772,6 @@ function disableAndHideTracktypeDropdown(valEle, index) {
  * and shows the criteria drop-down
  */
 function enableAndShowDateTimeDropdown(valEle, index) {
-  console.log("datetime show");
   var spanDatetime = valEle.nextAll("#datetime_select");
   spanDatetime
     .children("#sp_criteria_datetime_select_" + index)
@@ -796,7 +791,6 @@ function enableAndShowDateTimeDropdown(valEle, index) {
  */
 
 function disableAndHideDateTimeDropdown(valEle, index) {
-  console.log("datetime hide");
   var spanDatetime = valEle.nextAll("#datetime_select");
   spanDatetime
     .children("#sp_criteria_datetime_select_" + index)
@@ -813,7 +807,6 @@ function disableAndHideDateTimeDropdown(valEle, index) {
  * and shows the criteria drop-down
  */
 function enableAndShowExtraDateTimeDropdown(valEle, index) {
-  console.log("datetime show");
   var spanDatetime = valEle.nextAll("#extra_datetime_select");
   spanDatetime
     .children("#sp_criteria_extra_datetime_select_" + index)
@@ -829,7 +822,6 @@ function enableAndShowExtraDateTimeDropdown(valEle, index) {
  */
 
 function disableAndHideExtraDateTimeDropdown(valEle, index) {
-  console.log("datetime hide");
   var spanDatetime = valEle.nextAll("#extra_datetime_select");
   spanDatetime
     .children("#sp_criteria_extra_datetime_select_" + index)
@@ -844,7 +836,6 @@ function disableAndHideExtraDateTimeDropdown(valEle, index) {
 
 function enableAndShowExtraField(valEle, index) {
   var spanExtra = valEle.nextAll("#extra_criteria");
-  console.log("shown");
   spanExtra.children("#sp_criteria_extra_" + index).removeAttr("disabled");
   spanExtra.show();
 
@@ -860,18 +851,15 @@ function disableAndHideExtraField(valEle, index) {
     .val("")
     .attr("disabled", "disabled");
   spanExtra.hide();
-  console.log("hidden");
 
   //make value input larger since we don't have extra field now
   var criteria_value = $("#sp_criteria_value_" + index);
   sizeTextBoxes(criteria_value, "sp_extra_input_text", "sp_input_text");
 }
 function disableAndHideLimitValue() {
-  console.log("we hide it");
   $("#sp_limit_value").hide();
 }
 function enableAndShowLimitValue() {
-  console.log("we show it");
   $("#sp_limit_value").show();
 }
 

@@ -289,7 +289,6 @@ var AIRTIME = (function (AIRTIME) {
   }
 
   mod.addToSchedule = function (selected) {
-    console.log(selected);
     var aMediaIds = [],
       aSchedIds = [],
       aData = [];

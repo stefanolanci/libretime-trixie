@@ -1111,7 +1111,7 @@ function setAddShowEvents(form) {
   $("#add_show_logo").prop("accept", "image/*");
 
   //$('#add_show_name').bind('input', 'change', function(){
-  $("#add_show_start_time").bind("input", "change", function () {
+  $("#add_show_start_time").on("input change", function () {
     calculateShowColor();
   });
 }

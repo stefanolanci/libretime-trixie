@@ -1684,13 +1684,13 @@ var AIRTIME = (function (AIRTIME) {
   mod.onReady = function () {
     $lib = $("#library_content");
 
-    $("#new-playlist").live("click", function () {
+    $(document).on("click", "#new-playlist", function () {
       AIRTIME.playlist.fnNew();
     });
-    $("#new-smart-block").live("click", function () {
+    $(document).on("click", "#new-smart-block", function () {
       AIRTIME.playlist.fnNewBlock();
     });
-    $("#new-webstream").live("click", function () {
+    $(document).on("click", "#new-webstream", function () {
       AIRTIME.playlist.fnWsNew();
     });
 

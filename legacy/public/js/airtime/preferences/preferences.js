@@ -139,7 +139,7 @@ function deleteAllFiles() {
 }
 
 $(document).ready(function () {
-  $(".collapsible-header").live("click", function () {
+  $(document).on("click", ".collapsible-header", function () {
     $(this).next().toggle("fast");
     $(this).toggleClass("closed");
     return false;

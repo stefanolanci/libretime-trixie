@@ -28,9 +28,8 @@ def create_source()
     # and decoder logs still look healthy.
 
     l = map_metadata(notify_queue,l)
-    # cross_http/http_fallback wrap the file queue around input.http; a broken dummy URL
-    # makes the crosser spam decode errors and can silence the stream. File automation
-    # does not need this path (web streams still use the http source via telnet).
+    # Web streams use the http source via telnet; file automation does not need
+    # crossfade wrappers around it.
     l = map_metadata(id="map_metadata:schedule", update=false, append_title, l)
     sources := list.append([l], sources())
     server.register(namespace="queues",

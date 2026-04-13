@@ -107,7 +107,6 @@ function validateTimeRange() {
     $(".error_window").html("");
   } else {
     error_window.addClass("error");
-    console.log("bad");
     $(".error_window").html("Your start date time is after your end date time");
   }
 

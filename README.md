@@ -71,9 +71,7 @@ The root **`install`** script consumes **`installer/`** (templates, Nginx, Iceca
 From the repository root, make scripts executable if needed (ZIP, copies from Windows, etc.):
 
 ```bash
-chmod +x install tools/version.sh installer/uninstall-libretime.sh
-# optional, if you use shell helpers from the clone:
-chmod +x tools/diagnose-stream-chain.sh tools/stream-level-once.sh tools/align-running-install-from-here.sh
+chmod +x install tools/version.sh installer/uninstall-libretime.sh installer/letsencrypt/renew-icecast-bundle.sh
 ```
 
 ### Basic usage
@@ -212,11 +210,17 @@ Open whatever clients need:
 
 Targeted fixes for **Debian 13 / Liquidsoap 2.3** and races between UI, API, and playout:
 
+- **First-track volume fix:** bootstrap sequence reordered — `schedule_streaming` is only activated after `PypoPush` has pushed the initial tracks to Liquidsoap's `request.queue`, preventing `amplify` from missing `libretime_replay_gain` metadata on the first track.
 - **Live / harbor:** legacy updates **database connection state before** publishing the RabbitMQ `switch_source` message (`ApiController::updateSourceStatusAction`, `DashboardController::switchSourceAction`) so `GET /api/v2/stream/state` and playout stay consistent.
 - **Liquidsoap source selection:** harbor **show** / **main** switches no longer require `source.is_ready(...)` only — on LS 2.3 it can stay false with valid PCM, which left automation on air despite a connected encoder.
 - **Schedule queues:** after automation queue changes, playout can **resync** (flush and refill) to avoid stale crossfades / metadata on the wrong track.
 - **Calendar week view & autoplaylist:** `getShowHasAutoplaylist()` in `legacy/application/models/ShowInstance.php` uses the same **overlap** window as `getContentCount()` / `getIsFull()` (`starts < p_end` and `ends > p_start`) so edge-of-week shows are not shown empty before `cc_schedule` fills. See [LibreTime #3235](https://github.com/libretime/libretime/issues/3235).
 - **Autoplaylist fill:** `legacy/application/common/AutoPlaylistManager.php` also considers shows **already started but not finished** when `autoplaylist_built` is still false, and sets `autoplaylist_built` only if **`cc_schedule`** has rows after the attempt. See [LibreTime #3226](https://github.com/libretime/libretime/issues/3226).
+- **PHP 8.4 compatibility:** `E_STRICT` / `E_DEPRECATED` handling in `airtime-boot.php`, Propel patches for `Criteria::getIterator()` / `PropelPDO::query` / `PropelOnDemandCollection` signatures, `utf8_encode()` → `mb_convert_encoding()`.
+- **JS modernization:** jQuery `.live()` → `.on()`, dead `console.log` removed, `class='artwork'` attribute fix, `.bind()` event delegation bug fixed.
+- **Liquidsoap cleanup:** dead functions (`transition_default`, `to_live`, `cross_http`, `http_fallback`) removed from `ls_lib.liq`; `make_ouput_` typo corrected to `make_output_` in both `ls_lib.liq` and the Jinja output template.
+- **Python modernization:** `datetime.utcnow()` replaced with `datetime.now(timezone.utc)` across the playout package; `UnboundLocalError` risk fixed in analyzer `message_listener.py`.
+- **Install robustness:** `--wizard` validates TTY, blocks upgrade usage, and rejects combined positional URL; flags requiring arguments now fail with a clear message instead of a cryptic `shift` error; first install without a URL or `--wizard` is now blocked.
 - **Version label:** root `VERSION` file (e.g. `0.0.1 trixie`); `tools/version.sh` does **not** overwrite it when it already contains a semver.
 
 After `git pull` on an installed host, redeploy changed paths (legacy PHP, playout, Liquidsoap) and restart services as usual.

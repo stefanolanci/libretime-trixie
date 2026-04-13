@@ -10,28 +10,22 @@ if (!empty($_SERVER['HTTPS'])) {
 }
 ini_set('session.cookie_httponly', '1');
 
-error_reporting(E_ALL);
+error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
 
 function exception_error_handler($errno, $errstr, $errfile, $errline)
 {
-    // Check if the statement that threw this error wanted its errors to be
-    // suppressed. If so then return without throwing an exception.
     if (0 === error_reporting()) {
-        return;
+        return false;
     }
 
-    // PHP 8.1+: many deprecations (Zend Framework 1, Propel 1, session handlers)
-    // would otherwise become uncaught ErrorException and kill every request.
-    if (
-        $errno === E_DEPRECATED
-        || $errno === E_USER_DEPRECATED
-    ) {
+    // Deprecations (ZF1, Propel 1, PHP 8.x changes) are suppressed at the
+    // error_reporting level above; if one still reaches this handler let it
+    // pass through to the default logger without becoming an exception.
+    if ($errno === E_DEPRECATED || $errno === E_USER_DEPRECATED) {
         return false;
     }
 
     throw new ErrorException($errstr, $errno, 0, $errfile, $errline);
-
-    return false;
 }
 
 set_error_handler('exception_error_handler');

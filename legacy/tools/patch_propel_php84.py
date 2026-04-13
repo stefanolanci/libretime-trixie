@@ -1,4 +1,4 @@
-"""Patch libretime/propel1 for PHP 8.1+ (PropelConfiguration, PropelPDO::query)."""
+"""Patch libretime/propel1 for PHP 8.1+ / 8.4 (signatures, return types)."""
 import sys
 from pathlib import Path
 
@@ -273,6 +273,24 @@ def main() -> None:
             print("patched count()", ondemand)
     else:
         print("skip PropelOnDemandCollection (missing file)")
+
+    # Criteria::getIterator() must declare `: Traversable` (PHP 8.4 IteratorAggregate)
+    criteria = legacy / "vendor/libretime/propel1/runtime/lib/query/Criteria.php"
+    if criteria.is_file():
+        tc = criteria.read_text(encoding="utf-8", errors="replace")
+        if "public function getIterator()" in tc and "): Traversable" not in tc:
+            tc = tc.replace(
+                "public function getIterator()",
+                "public function getIterator(): \\Traversable",
+                1,
+            )
+            criteria.write_text(tc, encoding="utf-8")
+            print("patched Criteria::getIterator()", criteria)
+        else:
+            print("skip Criteria::getIterator (already patched or not found)")
+    else:
+        print("skip Criteria (missing file)")
+
 
 
 if __name__ == "__main__":

@@ -228,7 +228,6 @@ var AIRTIME = (function (AIRTIME) {
       animated: false,
       create: function (event, ui) {
         var $div = $showList.find(".ui-accordion-content-active");
-        console.log(event);
         //$div.css()
         createShowTable($div);
       },

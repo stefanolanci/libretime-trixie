@@ -63,23 +63,6 @@ def transition(a,b) =
   )
 end
 
-# Default → automation: must mirror transition()'s operators exactly so LS 2.3 switch
-# typing accepts both. Use ~0s fades (not input_fade_transition) so fade.in does not
-# strangle the crossfade-free automation path for a whole track.
-def transition_default(a,b) =
-  log("transition called...")
-  add(
-    normalize=false,
-    [
-      sequence([
-        blank(duration=0.01),
-        fade.in(duration=0.001, b)
-      ]),
-      fade.out(duration=0.001, a)
-    ]
-  )
-end
-
 # Schedule <-> offline default: hard cut to the new branch (Liquidsoap 2.3 pads missing
 # switch transitions with `fun (x,y) -> y`). Upstream 2.1 used the same idea via
 # `transition_default` + `just_switched` so the first automation track after leaving
@@ -90,24 +73,14 @@ def transition_schedule_cut(a, b) =
   b
 end
 
-# Define a transition that fades out the old source, adds a single, and then plays the
-# new source
-def to_live(old,new) =
-  # Fade out old source
-  old = fade.out(old)
-  # Compose this in sequence with the new source
-  sequence([old,new])
-end
-
-
-def make_ouput_on_connect_handler(stream)
+def make_output_on_connect_handler(stream)
   def on_connect()
     gateway("stream '#{stream}' '#{boot_timestamp}'")
   end
   on_connect
 end
 
-def make_ouput_on_error_handler(stream)
+def make_output_on_error_handler(stream)
   def on_error(msg)
     gateway("stream '#{stream}' '#{boot_timestamp}' --error='#{msg}'")
     5.
@@ -176,105 +149,3 @@ def input.http_restart(~id, ~initial_url)
 
 end
 
-# Transitions between URL changes in HTTP streams.
-def cross_http(~debug=true,~http_input_id,source)
-  id = http_input_id
-  last_url = ref ("")
-  change = ref (false)
-
-  def on_m(m) =
-    notify_stream(m)
-    changed = m["source_url"] != last_url()
-    log("URL now #{m['source_url']} (change: #{changed})")
-    if changed then
-      if last_url() != "" then change := true end
-      last_url := m["source_url"]
-    end
-    m
-  end
-  # We use both metadata and status to know about the current URL.
-  # Using only metadata may be more precise is crazy corner cases,
-  # but it's also asking too much: the metadata may not pass through
-  # before the crosser is instantiated.
-  # Using only status in crosser misses some info, eg. on first URL.
-  source = map_metadata(on_m,source)
-
-  cross_d = 3.
-
-  def crosser(ending, starting)
-    url = list.hd(server.execute("#{id}.url"), default="")
-    status = list.hd(server.execute("#{id}.status"))
-    on_m([("source_url",url)])
-    if debug then
-      log("New track inside HTTP stream")
-      log("  status: #{status}")
-      log("  need to cross: #{change()}")
-      #log("  remaining #{source.remaining(ending.source)} sec before, \
-      #       #{source.remaining(starting.source)} sec after")
-    end
-    if change() then
-      change := false
-      # In principle one should avoid crossing on a live stream
-      # it'd be okay to do it here (eg. use add instead of sequence)
-      # because it's only once per URL, but be cautious.
-      sequence([fade.out(duration=cross_d,ending.source),fade.in(starting.source)])
-    else
-      # This is done on tracks inside a single stream.
-      # Do NOT cross here or you'll gradually empty the buffer!
-      sequence([ending.source,starting.source])
-    end
-  end
-
-  # Liquidsoap 2.3+: `conservative` removed from cross()
-  cross(duration=cross_d, crosser, source)
-
-end
-
-# Custom fallback between http and default source with fading of
-# beginning and end of HTTP stream.
-# It does not take potential URL changes into account, as long as
-# they do not interrupt streaming (thanks to the HTTP buffer).
-def http_fallback(~http_input_id,~http,~default)
-
-  id = http_input_id
-
-  # We use a custom switching predicate to trigger switching (and thus,
-  # transitions) before the end of a track (rather, end of HTTP stream).
-  # It is complexified because we don't want to trigger switching when
-  # HTTP disconnects for just an instant, when changing URL: for that
-  # we use gracetime below.
-
-  def gracetime(~delay=3.,f)
-    last_true = ref(0.)
-    { if f() then
-        last_true := time()
-        true
-      else
-        time() < last_true()+delay
-      end }
-  end
-
-  def connected()
-    status = list.hd(server.execute("#{id}.status"), default="")
-    not(list.mem(status,["polling","stopped"]))
-  end
-  connected = gracetime(connected)
-
-  def to_live(a,b) =
-    log("TRANSITION to live")
-    add(normalize=false,
-        [fade.in(b),fade.out(a)])
-  end
-  def to_static(a,b) =
-    log("TRANSITION to static")
-    sequence([fade.out(a),fade.in(b)])
-  end
-
-  switch(
-    track_sensitive=false,
-    transitions=[to_live,to_static],
-    [(# make sure it is connected, and not buffering
-      {connected() and source.is_ready(http) and web_stream_enabled()}, http),
-     ({true},default)])
-
-end

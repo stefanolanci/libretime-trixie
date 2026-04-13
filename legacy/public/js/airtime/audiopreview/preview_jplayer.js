@@ -168,8 +168,6 @@ function buildplaylist(p_url, p_playIndex) {
             flac: data[index]["uri"],
           };
         } else {
-          // skip this track since it's not supported
-          console.log("continue");
           skipped++;
           continue;
         }
