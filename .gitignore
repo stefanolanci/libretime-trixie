@@ -1,0 +1,21 @@
+# Local-only helpers at repo root (SQL/telnet dumps, etc.)
+/scripts/
+
+.DS_Store
+.idea/
+*~
+
+.env
+.venv
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+*.log
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/

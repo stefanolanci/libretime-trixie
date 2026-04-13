@@ -1,0 +1,220 @@
+# =============================================================================
+# LibreTime – config.yml (template for new installations)
+# =============================================================================
+#
+# This file defines the public URL, credentials, storage, and especially
+# streams to Icecast/Shoutcast. After installation it usually lives at:
+#   /etc/libretime/config.yml
+#
+# Recommended audio format on this distribution: MP3
+#   • Best compatibility with players and Icecast directories.
+#   • AAC (format: aac) passes YAML validation but is NOT usable with the
+#     typical Debian/Trixie Liquidsoap package: the fdkaac encoder is missing
+#     (“unsupported format” at startup). Do not enable AAC unless you use a
+#     custom Liquidsoap build with libfdk-aac.
+#   • Ogg (Vorbis) and Opus remain valid if you change `format` under `audio:`;
+#     for Ogg see the notes on `enable_metadata` below.
+#
+# Icecast streams: at most 3 entries in the `icecast` array. Defaults here:
+#   1) /main      – MP3 128 kbps, enabled
+#   2) /main-low  – MP3  96 kbps, enabled (e.g. mobile / limited bandwidth)
+#   3) backup     – disabled, MP3 (ready if you need a third mount)
+#
+# Change default passwords (hackme) before production use.
+#
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# General
+# -----------------------------------------------------------------------------
+general:
+  # Public station URL (scheme + host [+ port if not 80/443]).
+  # Required. Example: https://radio.example.org or http://192.168.1.10:8080
+  public_url:
+
+  # API key used by internal services (playout, worker, …) for API v2.
+  api_key:
+
+  # Django secret key (sessions, tokens). Use a long random string.
+  secret_key:
+
+  # Extra CORS origins (in addition to public_url). List of URLs; often [] is fine.
+  allowed_cors_origins: []
+
+  # IANA timezone (e.g. Europe/Rome). Affects schedule and calendar.
+  timezone: UTC
+
+  # Hours ahead of schedule for which playout prefetches media files.
+  cache_ahead_hours: 1
+
+  # Legacy authentication adapter (default: local users).
+  auth: local
+
+# -----------------------------------------------------------------------------
+# Files and media
+# -----------------------------------------------------------------------------
+storage:
+  # Upload and media directory. If you change it, update the matching Nginx root.
+  path: /srv/libretime
+
+# -----------------------------------------------------------------------------
+# PostgreSQL
+# -----------------------------------------------------------------------------
+database:
+  host: localhost
+  port: 5432
+  name: libretime
+  user: libretime
+  password: libretime
+
+# -----------------------------------------------------------------------------
+# RabbitMQ (queues between legacy, playout, worker)
+# -----------------------------------------------------------------------------
+rabbitmq:
+  host: localhost
+  port: 5672
+  vhost: /libretime
+  user: libretime
+  password: libretime
+
+# -----------------------------------------------------------------------------
+# Email (optional)
+# -----------------------------------------------------------------------------
+email:
+  from_address: no-reply@libretime.org
+  host: localhost
+  port: 25
+  encryption:
+  user: ""
+  password: ""
+  timeout:
+  cert_file:
+  key_file:
+
+# -----------------------------------------------------------------------------
+# Playout (recordings and connection to Liquidsoap)
+# -----------------------------------------------------------------------------
+playout:
+  liquidsoap_host: localhost
+  liquidsoap_port: 1234
+
+  # Recording format and parameters. MP3 here to match stream defaults.
+  # Allowed record_file_format values: ogg | mp3
+  record_file_format: mp3
+  record_bitrate: 256
+  record_samplerate: 44100
+  record_channels: 2
+  record_sample_size: 16
+
+# -----------------------------------------------------------------------------
+# Liquidsoap (Telnet, live harbor inputs)
+# -----------------------------------------------------------------------------
+liquidsoap:
+  server_listen_address: "127.0.0.1"
+  server_listen_port: 1234
+  harbor_listen_address: ["0.0.0.0"]
+  harbor_ssl_certificate:
+  harbor_ssl_private_key:
+  harbor_ssl_password:
+
+# -----------------------------------------------------------------------------
+# Stream: Harbor inputs + outputs to Icecast / Shoutcast / local audio
+# -----------------------------------------------------------------------------
+stream:
+  # Live encoder (DJ) inputs: two ports, mount and credentials in legacy UI.
+  inputs:
+    main:
+      public_url:
+      mount: main
+      port: 8001
+      secure: false
+    show:
+      public_url:
+      mount: show
+      port: 8002
+      secure: false
+
+  outputs:
+    # -------------------------------------------------------------------------
+    # YAML anchor: shared fields for all Icecast outputs below.
+    # Set host/port/passwords here if every mount uses the same Icecast server.
+    # -------------------------------------------------------------------------
+    .default_icecast_output: &default_icecast_output
+      host: localhost
+      port: 8000
+      source_user: source
+      source_password: hackme
+      admin_user: admin
+      admin_password: hackme
+      name: LibreTime!
+      description: LibreTime Radio!
+      website: https://libretime.org
+      genre: various
+
+    # -------------------------------------------------------------------------
+    # Icecast — up to 3 mounts. Default: two enabled (main + main-low), both MP3.
+    #
+    # For each entry:
+    #   enabled   – true/false
+    #   mount     – Icecast mount point (no leading slash in the listen URL)
+    #   public_url – optional; if empty it is derived from general.public_url
+    #   audio.format – mp3 | ogg | opus | aac (aac not supported with Debian LS, see above)
+    #   audio.bitrate – one of: 32, 48, 64, 96, 128, 160, 192, 224, 256, 320
+    #   audio.enable_metadata – only for format: ogg (recommended default false)
+    # -------------------------------------------------------------------------
+    icecast:
+      # Primary mount — standard quality
+      - <<: *default_icecast_output
+        enabled: true
+        public_url:
+        mount: main
+        audio:
+          format: mp3
+          bitrate: 128
+
+      # Second mount — lower bitrate (backup, mobile, bandwidth limits)
+      - <<: *default_icecast_output
+        enabled: true
+        public_url:
+        mount: main-low
+        audio:
+          format: mp3
+          bitrate: 96
+
+      # Third slot — disabled; same MP3 model for quick enablement
+      - <<: *default_icecast_output
+        enabled: false
+        public_url:
+        mount: backup
+        audio:
+          format: mp3
+          bitrate: 128
+
+    # -------------------------------------------------------------------------
+    # Shoutcast — only one output in the current model. Disabled here.
+    # Allowed format: mp3 | aac (same AAC limitations as above).
+    # -------------------------------------------------------------------------
+    shoutcast:
+      - enabled: false
+        public_url:
+        host: localhost
+        port: 8000
+        source_user: source
+        source_password: hackme
+        admin_user: admin
+        admin_password: hackme
+        audio:
+          format: mp3
+          bitrate: 256
+        name: LibreTime!
+        website: https://libretime.org
+        genre: various
+        mobile: false
+
+    # -------------------------------------------------------------------------
+    # Local audio output (sound card / PulseAudio) — disabled by default
+    # -------------------------------------------------------------------------
+    system:
+      - enabled: false
+        kind: pulseaudio
+        device:
