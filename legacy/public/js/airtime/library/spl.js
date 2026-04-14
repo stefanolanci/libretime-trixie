@@ -1124,10 +1124,7 @@ var AIRTIME = (function (AIRTIME) {
     mod.init();
 
     // functions in smart_blockbuilder.js
-    setupUI();
-    appendAddButton();
-    appendModAddButton();
-    removeButtonCheck();
+    setSmartBlockEvents();
     mod.setFadeIcon();
   };
 
