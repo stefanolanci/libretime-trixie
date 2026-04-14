@@ -7,6 +7,8 @@ show_name = interactive.string("show_name", "")
 
 dynamic_metadata_callback = ref (fun (~new_track=false, s) -> begin () end)
 
+just_switched = ref(false)
+
 %include "ls_lib.liq"
 
 sources = ref([])
@@ -14,22 +16,23 @@ source_id = ref (0)
 
 def create_source()
     this_source_id = source_id()
-    l = request.queue(id="s#{this_source_id}")#, length=0.5
+    l = request.queue(id="s#{this_source_id}")
 
     l = audio_to_stereo(id="queue_src", l)
-    # cue_cut is deprecated in Liquidsoap 2.3.2+ (integrated into request resolution);
-    # keeping it here silenced decoded audio on some builds.
-    # Playout sets annotate:libretime_replay_gain only; do not use override="replay_gain"
-    # or ICY/decoder metadata can force ~0 linear gain before the track stabilizes.
+
+    # Replay gain: amplify reads the per-track value from annotation metadata.
+    # The UI "Replay Gain" setting controls whether the API sends a value;
+    # when disabled, libretime_replay_gain is absent and amplify uses 1.0.
     l = amplify(1., override="libretime_replay_gain", l)
 
-    # Do not wrap each queue in fade.in/fade.out here: on Liquidsoap 2.3.x with ffmpeg,
-    # that combination silences the automation path (~−91 dBFS on Icecast) while metadata
-    # and decoder logs still look healthy.
+    # LS 2.3 applies liq_cue_in / liq_cue_out / liq_fade_in / liq_fade_out
+    # natively during request resolution — no explicit cue_cut or fade
+    # operators needed.  The playout annotation sends the values configured
+    # in the UI (per-track cue points, fade durations).
 
-    l = map_metadata(notify_queue,l)
-    # Web streams use the http source via telnet; file automation does not need
-    # crossfade wrappers around it.
+    l = map_metadata(notify_queue, l)
+    l = cross_http(http_input_id="http", l)
+    l = http_fallback(http_input_id="http", http=l, default=l)
     l = map_metadata(id="map_metadata:schedule", update=false, append_title, l)
     sources := list.append([l], sources())
     server.register(namespace="queues",
@@ -41,19 +44,12 @@ def create_source()
     source_id := source_id() + 1
 end
 
-# Do not call enable_replaygain_metadata(): on Liquidsoap 2.3.x + ffmpeg it can force the
-# automation chain to ~−91 dBFS silence while ICY metadata and VU still update. Library
-# replay gain from playout uses amplify(..., override="libretime_replay_gain") and
-# annotate:libretime_replay_gain when replay gain is enabled in stream preferences.
 create_source()
 create_source()
 create_source()
 create_source()
 
 queue = add(normalize=false, sources())
-# crossfade() caused the first scheduled track to stay silent until the next track
-# boundary (metadata/ICY correct, ~−91 dBFS on encoders) on Liquidsoap 2.3.x + ffmpeg.
-# Per-file liq_fade_in/out in annotate still apply at request resolution.
 queue = insert_metadata(queue)
 dynamic_metadata_callback := queue.insert_metadata
 
@@ -103,17 +99,13 @@ ignore(output.dummy(default, fallible=true))
 
 input_main_streaming = ref (false)
 input_show_streaming = ref (false)
-# Start false: bootstrap apply_liquidsoap_stream_switches (schedule_streaming=True) calls
-# start_schedule once the queue is still empty, so the switch takes the automation branch
-# without needing a post-push telnet pulse (which broke the first active decode on LS 2.3).
-# Brief default (~offline noise) until playout connects is acceptable.
 schedule_streaming = ref (false)
 
 def start_input_main() input_main_streaming := true end
 def stop_input_main() input_main_streaming := false end
 def start_input_show() input_show_streaming := true end
 def stop_input_show() input_show_streaming := false end
-def start_schedule() schedule_streaming := true end
+def start_schedule() schedule_streaming := true; just_switched := true end
 def stop_schedule() schedule_streaming := false end
 
 def update_source_status(sourcename, status) =
@@ -129,7 +121,6 @@ def make_input_auth_handler(input_name)
     def auth_handler(args)
         log("user '#{args.user}' connected", label="#{input_name}_input")
 
-        # Check auth based on return value from auth script
         ret = process.test("libretime-playout-notify live-auth '#{input_name}' '#{args.user}' '#{args.password}'")
         if ret then
             log("user '#{args.user}' authenticated", label="#{input_name}_input")
@@ -142,20 +133,13 @@ def make_input_auth_handler(input_name)
     auth_handler
 end
 
-# Do not use ({true}, default): when the queue is momentarily not ready, switch would steal
-# the output to near-silent default while replay_metadata keeps ICY titles (mute ~−91 dBFS).
-# Use transition_schedule_cut (instant handoff): no fade.in on the queue, matching LS 2.3
-# default padding `fun (x,y) -> y` and upstream 2.1’s “plain b” path for default→automation.
 s = switch(id="switch:blank+schedule",
             track_sensitive=false,
-            transitions=[transition_schedule_cut, transition_schedule_cut],
-            [({schedule_streaming()}, queue), ({not schedule_streaming()}, default)]
+            transitions=[transition_default, transition],
+            [({schedule_streaming()}, queue), ({true}, default)]
     )
 
 s = if input_show_port != 0 and input_show_mount != "" then
-    # buffer_length() is defined on input.harbor, not on audio_to_stereo(); require it so an idle
-    # harbor does not steal the stream. Harbor is used only when the UI switch is on (see fetch.py
-    # bootstrap: streaming = switch and connected).
     input_show_harbor =
         input.harbor(id="harbor:input_show",
             input_show_mount,
@@ -171,8 +155,6 @@ s = if input_show_port != 0 and input_show_mount != "" then
     switch(id="switch:blank+schedule+show",
             track_sensitive=false,
             transitions=[transition, transition],
-            # Do not require source.is_ready(harbor): on Liquidsoap 2.3 it can stay false while PCM is valid,
-            # so the mix would stay on automation despite a connected encoder.
             [({input_show_streaming() and input_show_harbor.buffer_length() > 0.}, input_show_source), ({true}, s)]
         )
 else

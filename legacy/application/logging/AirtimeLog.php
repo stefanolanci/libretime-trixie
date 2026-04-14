@@ -31,11 +31,11 @@ class Airtime_Zend_Log extends Zend_Log
      * @param string $errstr
      * @param string $errfile
      * @param int    $errline
-     * @param array  $errcontext
+     * @param array  $errcontext kept for parent-class signature compat; always [] since PHP 8.0
      *
      * @return bool
      */
-    public function errorHandler($errno, $errstr, $errfile, $errline, $errcontext)
+    public function errorHandler($errno, $errstr, $errfile, $errline, $errcontext = [])
     {
         $errorLevel = error_reporting();
 
@@ -45,11 +45,11 @@ class Airtime_Zend_Log extends Zend_Log
             } else {
                 $priority = Zend_Log::INFO;
             }
-            $this->log($errstr, $priority, ['errno' => $errno, 'file' => $errfile, 'line' => $errline, 'context' => $errcontext]);
+            $this->log($errstr, $priority, ['errno' => $errno, 'file' => $errfile, 'line' => $errline]);
         }
 
         if ($this->_origErrorHandler !== null) {
-            return call_user_func($this->_origErrorHandler, $errno, $errstr, $errfile, $errline, $errcontext);
+            return call_user_func($this->_origErrorHandler, $errno, $errstr, $errfile, $errline);
         }
 
         return false;
@@ -63,7 +63,7 @@ class Airtime_Zend_Log extends Zend_Log
      *   E_NOTICE, E_USER_NOTICE => NOTICE
      *   E_WARNING, E_CORE_WARNING, E_USER_WARNING => WARN
      *   E_ERROR, E_USER_ERROR, E_CORE_ERROR, E_RECOVERABLE_ERROR => ERR
-     *   E_DEPRECATED, E_STRICT, E_USER_DEPRECATED => DEBUG
+     *   E_DEPRECATED, E_USER_DEPRECATED => DEBUG
      *   (unknown/other) => INFO
      *
      * @see https://www.php.net/manual/en/function.set-error-handler.php Custom error handler
@@ -91,15 +91,9 @@ class Airtime_Zend_Log extends Zend_Log
             E_USER_ERROR => Zend_Log::ERR,
             E_CORE_ERROR => Zend_Log::ERR,
             E_RECOVERABLE_ERROR => Zend_Log::ERR,
-            E_STRICT => Zend_Log::DEBUG,
+            E_DEPRECATED => Zend_Log::DEBUG,
+            E_USER_DEPRECATED => Zend_Log::DEBUG,
         ];
-        // PHP 5.3.0+
-        if (defined('E_DEPRECATED')) {
-            $this->_errorHandlerMap['E_DEPRECATED'] = Zend_Log::DEBUG;
-        }
-        if (defined('E_USER_DEPRECATED')) {
-            $this->_errorHandlerMap['E_USER_DEPRECATED'] = Zend_Log::DEBUG;
-        }
 
         $this->_registeredErrorHandler = true;
 

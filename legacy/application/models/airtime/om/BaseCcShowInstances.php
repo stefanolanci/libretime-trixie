@@ -266,7 +266,7 @@ abstract class BaseCcShowInstances extends BaseObject implements Persistent
         }
 
         if (strpos($format, '%') !== false) {
-            return strftime($format, $dt->format('U'));
+            return _strftime_compat($format, $dt->format('U'));
         }
 
         return $dt->format($format);
@@ -301,7 +301,7 @@ abstract class BaseCcShowInstances extends BaseObject implements Persistent
         }
 
         if (strpos($format, '%') !== false) {
-            return strftime($format, $dt->format('U'));
+            return _strftime_compat($format, $dt->format('U'));
         }
 
         return $dt->format($format);
@@ -402,7 +402,7 @@ abstract class BaseCcShowInstances extends BaseObject implements Persistent
         }
 
         if (strpos($format, '%') !== false) {
-            return strftime($format, $dt->format('U'));
+            return _strftime_compat($format, $dt->format('U'));
         }
 
         return $dt->format($format);
@@ -437,7 +437,7 @@ abstract class BaseCcShowInstances extends BaseObject implements Persistent
         }
 
         if (strpos($format, '%') !== false) {
-            return strftime($format, $dt->format('U'));
+            return _strftime_compat($format, $dt->format('U'));
         }
 
         return $dt->format($format);
@@ -919,7 +919,7 @@ abstract class BaseCcShowInstances extends BaseObject implements Persistent
      * @return void
      * @throws PropelException - if this object is deleted, unsaved or doesn't have pk match in db
      */
-    public function reload($deep = false, PropelPDO $con = null)
+    public function reload($deep = false, ?PropelPDO $con = null)
     {
         if ($this->isDeleted()) {
             throw new PropelException("Cannot reload a deleted object.");
@@ -968,7 +968,7 @@ abstract class BaseCcShowInstances extends BaseObject implements Persistent
      * @see        BaseObject::setDeleted()
      * @see        BaseObject::isDeleted()
      */
-    public function delete(PropelPDO $con = null)
+    public function delete(?PropelPDO $con = null)
     {
         if ($this->isDeleted()) {
             throw new PropelException("This object has already been deleted.");
@@ -1011,7 +1011,7 @@ abstract class BaseCcShowInstances extends BaseObject implements Persistent
      * @throws Exception
      * @see        doSave()
      */
-    public function save(PropelPDO $con = null)
+    public function save(?PropelPDO $con = null)
     {
         if ($this->isDeleted()) {
             throw new PropelException("You cannot save an object that has been deleted.");
@@ -1871,7 +1871,7 @@ abstract class BaseCcShowInstances extends BaseObject implements Persistent
      * @return CcShowInstances The current object (for fluent API support)
      * @throws PropelException
      */
-    public function setCcShow(CcShow $v = null)
+    public function setCcShow(?CcShow $v = null)
     {
         if ($v === null) {
             $this->setDbShowId(NULL);
@@ -1900,7 +1900,7 @@ abstract class BaseCcShowInstances extends BaseObject implements Persistent
      * @return CcShow The associated CcShow object.
      * @throws PropelException
      */
-    public function getCcShow(PropelPDO $con = null, $doQuery = true)
+    public function getCcShow(?PropelPDO $con = null, $doQuery = true)
     {
         if ($this->aCcShow === null && ($this->show_id !== null) && $doQuery) {
             $this->aCcShow = CcShowQuery::create()->findPk($this->show_id, $con);
@@ -1923,7 +1923,7 @@ abstract class BaseCcShowInstances extends BaseObject implements Persistent
      * @return CcShowInstances The current object (for fluent API support)
      * @throws PropelException
      */
-    public function setCcShowInstancesRelatedByDbOriginalShow(CcShowInstances $v = null)
+    public function setCcShowInstancesRelatedByDbOriginalShow(?CcShowInstances $v = null)
     {
         if ($v === null) {
             $this->setDbOriginalShow(NULL);
@@ -1952,7 +1952,7 @@ abstract class BaseCcShowInstances extends BaseObject implements Persistent
      * @return CcShowInstances The associated CcShowInstances object.
      * @throws PropelException
      */
-    public function getCcShowInstancesRelatedByDbOriginalShow(PropelPDO $con = null, $doQuery = true)
+    public function getCcShowInstancesRelatedByDbOriginalShow(?PropelPDO $con = null, $doQuery = true)
     {
         if ($this->aCcShowInstancesRelatedByDbOriginalShow === null && ($this->instance_id !== null) && $doQuery) {
             $this->aCcShowInstancesRelatedByDbOriginalShow = CcShowInstancesQuery::create()->findPk($this->instance_id, $con);
@@ -1975,7 +1975,7 @@ abstract class BaseCcShowInstances extends BaseObject implements Persistent
      * @return CcShowInstances The current object (for fluent API support)
      * @throws PropelException
      */
-    public function setCcFiles(CcFiles $v = null)
+    public function setCcFiles(?CcFiles $v = null)
     {
         if ($v === null) {
             $this->setDbRecordedFile(NULL);
@@ -2004,7 +2004,7 @@ abstract class BaseCcShowInstances extends BaseObject implements Persistent
      * @return CcFiles The associated CcFiles object.
      * @throws PropelException
      */
-    public function getCcFiles(PropelPDO $con = null, $doQuery = true)
+    public function getCcFiles(?PropelPDO $con = null, $doQuery = true)
     {
         if ($this->aCcFiles === null && ($this->file_id !== null) && $doQuery) {
             $this->aCcFiles = CcFilesQuery::create()->findPk($this->file_id, $con);
@@ -2104,7 +2104,7 @@ abstract class BaseCcShowInstances extends BaseObject implements Persistent
      * @return PropelObjectCollection|CcShowInstances[] List of CcShowInstances objects
      * @throws PropelException
      */
-    public function getCcShowInstancessRelatedByDbId($criteria = null, PropelPDO $con = null)
+    public function getCcShowInstancessRelatedByDbId($criteria = null, ?PropelPDO $con = null)
     {
         $partial = $this->collCcShowInstancessRelatedByDbIdPartial && !$this->isNew();
         if (null === $this->collCcShowInstancessRelatedByDbId || null !== $criteria  || $partial) {
@@ -2159,7 +2159,7 @@ abstract class BaseCcShowInstances extends BaseObject implements Persistent
      * @param PropelPDO $con Optional connection object
      * @return CcShowInstances The current object (for fluent API support)
      */
-    public function setCcShowInstancessRelatedByDbId(PropelCollection $ccShowInstancessRelatedByDbId, PropelPDO $con = null)
+    public function setCcShowInstancessRelatedByDbId(PropelCollection $ccShowInstancessRelatedByDbId, ?PropelPDO $con = null)
     {
         $ccShowInstancessRelatedByDbIdToDelete = $this->getCcShowInstancessRelatedByDbId(new Criteria(), $con)->diff($ccShowInstancessRelatedByDbId);
 
@@ -2190,7 +2190,7 @@ abstract class BaseCcShowInstances extends BaseObject implements Persistent
      * @return int             Count of related CcShowInstances objects.
      * @throws PropelException
      */
-    public function countCcShowInstancessRelatedByDbId(Criteria $criteria = null, $distinct = false, PropelPDO $con = null)
+    public function countCcShowInstancessRelatedByDbId(?Criteria $criteria = null, $distinct = false, ?PropelPDO $con = null)
     {
         $partial = $this->collCcShowInstancessRelatedByDbIdPartial && !$this->isNew();
         if (null === $this->collCcShowInstancessRelatedByDbId || null !== $criteria || $partial) {
@@ -2379,7 +2379,7 @@ abstract class BaseCcShowInstances extends BaseObject implements Persistent
      * @return PropelObjectCollection|CcSchedule[] List of CcSchedule objects
      * @throws PropelException
      */
-    public function getCcSchedules($criteria = null, PropelPDO $con = null)
+    public function getCcSchedules($criteria = null, ?PropelPDO $con = null)
     {
         $partial = $this->collCcSchedulesPartial && !$this->isNew();
         if (null === $this->collCcSchedules || null !== $criteria  || $partial) {
@@ -2434,7 +2434,7 @@ abstract class BaseCcShowInstances extends BaseObject implements Persistent
      * @param PropelPDO $con Optional connection object
      * @return CcShowInstances The current object (for fluent API support)
      */
-    public function setCcSchedules(PropelCollection $ccSchedules, PropelPDO $con = null)
+    public function setCcSchedules(PropelCollection $ccSchedules, ?PropelPDO $con = null)
     {
         $ccSchedulesToDelete = $this->getCcSchedules(new Criteria(), $con)->diff($ccSchedules);
 
@@ -2465,7 +2465,7 @@ abstract class BaseCcShowInstances extends BaseObject implements Persistent
      * @return int             Count of related CcSchedule objects.
      * @throws PropelException
      */
-    public function countCcSchedules(Criteria $criteria = null, $distinct = false, PropelPDO $con = null)
+    public function countCcSchedules(?Criteria $criteria = null, $distinct = false, ?PropelPDO $con = null)
     {
         $partial = $this->collCcSchedulesPartial && !$this->isNew();
         if (null === $this->collCcSchedules || null !== $criteria || $partial) {
@@ -2654,7 +2654,7 @@ abstract class BaseCcShowInstances extends BaseObject implements Persistent
      * @return PropelObjectCollection|CcPlayoutHistory[] List of CcPlayoutHistory objects
      * @throws PropelException
      */
-    public function getCcPlayoutHistorys($criteria = null, PropelPDO $con = null)
+    public function getCcPlayoutHistorys($criteria = null, ?PropelPDO $con = null)
     {
         $partial = $this->collCcPlayoutHistorysPartial && !$this->isNew();
         if (null === $this->collCcPlayoutHistorys || null !== $criteria  || $partial) {
@@ -2709,7 +2709,7 @@ abstract class BaseCcShowInstances extends BaseObject implements Persistent
      * @param PropelPDO $con Optional connection object
      * @return CcShowInstances The current object (for fluent API support)
      */
-    public function setCcPlayoutHistorys(PropelCollection $ccPlayoutHistorys, PropelPDO $con = null)
+    public function setCcPlayoutHistorys(PropelCollection $ccPlayoutHistorys, ?PropelPDO $con = null)
     {
         $ccPlayoutHistorysToDelete = $this->getCcPlayoutHistorys(new Criteria(), $con)->diff($ccPlayoutHistorys);
 
@@ -2740,7 +2740,7 @@ abstract class BaseCcShowInstances extends BaseObject implements Persistent
      * @return int             Count of related CcPlayoutHistory objects.
      * @throws PropelException
      */
-    public function countCcPlayoutHistorys(Criteria $criteria = null, $distinct = false, PropelPDO $con = null)
+    public function countCcPlayoutHistorys(?Criteria $criteria = null, $distinct = false, ?PropelPDO $con = null)
     {
         $partial = $this->collCcPlayoutHistorysPartial && !$this->isNew();
         if (null === $this->collCcPlayoutHistorys || null !== $criteria || $partial) {

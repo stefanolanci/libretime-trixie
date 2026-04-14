@@ -128,7 +128,7 @@ abstract class BaseCcWebstreamMetadata extends BaseObject implements Persistent
         }
 
         if (strpos($format, '%') !== false) {
-            return strftime($format, $dt->format('U'));
+            return _strftime_compat($format, $dt->format('U'));
         }
 
         return $dt->format($format);
@@ -319,7 +319,7 @@ abstract class BaseCcWebstreamMetadata extends BaseObject implements Persistent
      * @return void
      * @throws PropelException - if this object is deleted, unsaved or doesn't have pk match in db
      */
-    public function reload($deep = false, PropelPDO $con = null)
+    public function reload($deep = false, ?PropelPDO $con = null)
     {
         if ($this->isDeleted()) {
             throw new PropelException("Cannot reload a deleted object.");
@@ -360,7 +360,7 @@ abstract class BaseCcWebstreamMetadata extends BaseObject implements Persistent
      * @see        BaseObject::setDeleted()
      * @see        BaseObject::isDeleted()
      */
-    public function delete(PropelPDO $con = null)
+    public function delete(?PropelPDO $con = null)
     {
         if ($this->isDeleted()) {
             throw new PropelException("This object has already been deleted.");
@@ -403,7 +403,7 @@ abstract class BaseCcWebstreamMetadata extends BaseObject implements Persistent
      * @throws Exception
      * @see        doSave()
      */
-    public function save(PropelPDO $con = null)
+    public function save(?PropelPDO $con = null)
     {
         if ($this->isDeleted()) {
             throw new PropelException("You cannot save an object that has been deleted.");
@@ -968,7 +968,7 @@ abstract class BaseCcWebstreamMetadata extends BaseObject implements Persistent
      * @return CcWebstreamMetadata The current object (for fluent API support)
      * @throws PropelException
      */
-    public function setCcSchedule(CcSchedule $v = null)
+    public function setCcSchedule(?CcSchedule $v = null)
     {
         if ($v === null) {
             $this->setDbInstanceId(NULL);
@@ -997,7 +997,7 @@ abstract class BaseCcWebstreamMetadata extends BaseObject implements Persistent
      * @return CcSchedule The associated CcSchedule object.
      * @throws PropelException
      */
-    public function getCcSchedule(PropelPDO $con = null, $doQuery = true)
+    public function getCcSchedule(?PropelPDO $con = null, $doQuery = true)
     {
         if ($this->aCcSchedule === null && ($this->instance_id !== null) && $doQuery) {
             $this->aCcSchedule = CcScheduleQuery::create()->findPk($this->instance_id, $con);

@@ -328,7 +328,7 @@ abstract class BaseCcPlaylistcontents extends BaseObject implements Persistent
         }
 
         if (strpos($format, '%') !== false) {
-            return strftime($format, $dt->format('U'));
+            return _strftime_compat($format, $dt->format('U'));
         }
 
         return $dt->format($format);
@@ -363,7 +363,7 @@ abstract class BaseCcPlaylistcontents extends BaseObject implements Persistent
         }
 
         if (strpos($format, '%') !== false) {
-            return strftime($format, $dt->format('U'));
+            return _strftime_compat($format, $dt->format('U'));
         }
 
         return $dt->format($format);
@@ -789,7 +789,7 @@ abstract class BaseCcPlaylistcontents extends BaseObject implements Persistent
      * @return void
      * @throws PropelException - if this object is deleted, unsaved or doesn't have pk match in db
      */
-    public function reload($deep = false, PropelPDO $con = null)
+    public function reload($deep = false, ?PropelPDO $con = null)
     {
         if ($this->isDeleted()) {
             throw new PropelException("Cannot reload a deleted object.");
@@ -832,7 +832,7 @@ abstract class BaseCcPlaylistcontents extends BaseObject implements Persistent
      * @see        BaseObject::setDeleted()
      * @see        BaseObject::isDeleted()
      */
-    public function delete(PropelPDO $con = null)
+    public function delete(?PropelPDO $con = null)
     {
         if ($this->isDeleted()) {
             throw new PropelException("This object has already been deleted.");
@@ -875,7 +875,7 @@ abstract class BaseCcPlaylistcontents extends BaseObject implements Persistent
      * @throws Exception
      * @see        doSave()
      */
-    public function save(PropelPDO $con = null)
+    public function save(?PropelPDO $con = null)
     {
         if ($this->isDeleted()) {
             throw new PropelException("You cannot save an object that has been deleted.");
@@ -1618,7 +1618,7 @@ abstract class BaseCcPlaylistcontents extends BaseObject implements Persistent
      * @return CcPlaylistcontents The current object (for fluent API support)
      * @throws PropelException
      */
-    public function setCcFiles(CcFiles $v = null)
+    public function setCcFiles(?CcFiles $v = null)
     {
         if ($v === null) {
             $this->setDbFileId(NULL);
@@ -1647,7 +1647,7 @@ abstract class BaseCcPlaylistcontents extends BaseObject implements Persistent
      * @return CcFiles The associated CcFiles object.
      * @throws PropelException
      */
-    public function getCcFiles(PropelPDO $con = null, $doQuery = true)
+    public function getCcFiles(?PropelPDO $con = null, $doQuery = true)
     {
         if ($this->aCcFiles === null && ($this->file_id !== null) && $doQuery) {
             $this->aCcFiles = CcFilesQuery::create()->findPk($this->file_id, $con);
@@ -1670,7 +1670,7 @@ abstract class BaseCcPlaylistcontents extends BaseObject implements Persistent
      * @return CcPlaylistcontents The current object (for fluent API support)
      * @throws PropelException
      */
-    public function setCcBlock(CcBlock $v = null)
+    public function setCcBlock(?CcBlock $v = null)
     {
         if ($v === null) {
             $this->setDbBlockId(NULL);
@@ -1699,7 +1699,7 @@ abstract class BaseCcPlaylistcontents extends BaseObject implements Persistent
      * @return CcBlock The associated CcBlock object.
      * @throws PropelException
      */
-    public function getCcBlock(PropelPDO $con = null, $doQuery = true)
+    public function getCcBlock(?PropelPDO $con = null, $doQuery = true)
     {
         if ($this->aCcBlock === null && ($this->block_id !== null) && $doQuery) {
             $this->aCcBlock = CcBlockQuery::create()->findPk($this->block_id, $con);
@@ -1722,7 +1722,7 @@ abstract class BaseCcPlaylistcontents extends BaseObject implements Persistent
      * @return CcPlaylistcontents The current object (for fluent API support)
      * @throws PropelException
      */
-    public function setCcPlaylist(CcPlaylist $v = null)
+    public function setCcPlaylist(?CcPlaylist $v = null)
     {
         // aggregate_column_relation behavior
         if (null !== $this->aCcPlaylist && $v !== $this->aCcPlaylist) {
@@ -1755,7 +1755,7 @@ abstract class BaseCcPlaylistcontents extends BaseObject implements Persistent
      * @return CcPlaylist The associated CcPlaylist object.
      * @throws PropelException
      */
-    public function getCcPlaylist(PropelPDO $con = null, $doQuery = true)
+    public function getCcPlaylist(?PropelPDO $con = null, $doQuery = true)
     {
         if ($this->aCcPlaylist === null && ($this->playlist_id !== null) && $doQuery) {
             $this->aCcPlaylist = CcPlaylistQuery::create()->findPk($this->playlist_id, $con);

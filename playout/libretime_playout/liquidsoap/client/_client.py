@@ -68,10 +68,26 @@ class LiquidsoapClient:
         raise LiquidsoapClientError("could not get liquidsoap version")
 
     def queues_remove(self, *queues: int) -> None:
+        """Skip tracks in the given queues.
+
+        In Liquidsoap 2.3, calling skip on an *empty* queue leaves the source
+        in a broken state that silences the first track pushed afterwards
+        (the infamous -91 dB bug).  We therefore query each queue first and
+        only skip if it actually has pending requests.
+        """
         with self.conn:
             for queue_id in queues:
-                self.conn.write(f"queues.s{queue_id}_skip")
-                self.conn.read()  # Flush
+                if queue_id < 3:
+                    qcmd = f"request_queue.{queue_id + 1}.queue"
+                else:
+                    qcmd = "request_queue.queue"
+                self.conn.write(qcmd)
+                contents = self.conn.read().strip()
+                if contents:
+                    self.conn.write(f"queues.s{queue_id}_skip")
+                    self.conn.read()
+                else:
+                    logger.debug("queue s%d already empty, skip avoided", queue_id)
 
     def queue_push(self, queue_id: int, entry: str, show_name: str) -> None:
         if queue_id < 3:
@@ -90,7 +106,13 @@ class LiquidsoapClient:
                     reply,
                     preview,
                 )
-            self._set_var("show_name", self._quote(show_name))
+            try:
+                self._set_var("show_name", self._quote(show_name))
+            except Exception:
+                logger.warning(
+                    "failed to set show_name after push (non-fatal, queue_id=%d)",
+                    queue_id,
+                )
 
     def web_stream_get_id(self) -> str:
         with self.conn:

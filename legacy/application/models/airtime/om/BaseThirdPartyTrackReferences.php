@@ -196,7 +196,7 @@ abstract class BaseThirdPartyTrackReferences extends BaseObject implements Persi
         }
 
         if (strpos($format, '%') !== false) {
-            return strftime($format, $dt->format('U'));
+            return _strftime_compat($format, $dt->format('U'));
         }
 
         return $dt->format($format);
@@ -435,7 +435,7 @@ abstract class BaseThirdPartyTrackReferences extends BaseObject implements Persi
      * @return void
      * @throws PropelException - if this object is deleted, unsaved or doesn't have pk match in db
      */
-    public function reload($deep = false, PropelPDO $con = null)
+    public function reload($deep = false, ?PropelPDO $con = null)
     {
         if ($this->isDeleted()) {
             throw new PropelException("Cannot reload a deleted object.");
@@ -478,7 +478,7 @@ abstract class BaseThirdPartyTrackReferences extends BaseObject implements Persi
      * @see        BaseObject::setDeleted()
      * @see        BaseObject::isDeleted()
      */
-    public function delete(PropelPDO $con = null)
+    public function delete(?PropelPDO $con = null)
     {
         if ($this->isDeleted()) {
             throw new PropelException("This object has already been deleted.");
@@ -521,7 +521,7 @@ abstract class BaseThirdPartyTrackReferences extends BaseObject implements Persi
      * @throws Exception
      * @see        doSave()
      */
-    public function save(PropelPDO $con = null)
+    public function save(?PropelPDO $con = null)
     {
         if ($this->isDeleted()) {
             throw new PropelException("You cannot save an object that has been deleted.");
@@ -1152,7 +1152,7 @@ abstract class BaseThirdPartyTrackReferences extends BaseObject implements Persi
      * @return ThirdPartyTrackReferences The current object (for fluent API support)
      * @throws PropelException
      */
-    public function setCcFiles(CcFiles $v = null)
+    public function setCcFiles(?CcFiles $v = null)
     {
         if ($v === null) {
             $this->setDbFileId(0);
@@ -1181,7 +1181,7 @@ abstract class BaseThirdPartyTrackReferences extends BaseObject implements Persi
      * @return CcFiles The associated CcFiles object.
      * @throws PropelException
      */
-    public function getCcFiles(PropelPDO $con = null, $doQuery = true)
+    public function getCcFiles(?PropelPDO $con = null, $doQuery = true)
     {
         if ($this->aCcFiles === null && ($this->file_id !== null) && $doQuery) {
             $this->aCcFiles = CcFilesQuery::create()->findPk($this->file_id, $con);
@@ -1275,7 +1275,7 @@ abstract class BaseThirdPartyTrackReferences extends BaseObject implements Persi
      * @return PropelObjectCollection|CeleryTasks[] List of CeleryTasks objects
      * @throws PropelException
      */
-    public function getCeleryTaskss($criteria = null, PropelPDO $con = null)
+    public function getCeleryTaskss($criteria = null, ?PropelPDO $con = null)
     {
         $partial = $this->collCeleryTaskssPartial && !$this->isNew();
         if (null === $this->collCeleryTaskss || null !== $criteria  || $partial) {
@@ -1330,7 +1330,7 @@ abstract class BaseThirdPartyTrackReferences extends BaseObject implements Persi
      * @param PropelPDO $con Optional connection object
      * @return ThirdPartyTrackReferences The current object (for fluent API support)
      */
-    public function setCeleryTaskss(PropelCollection $celeryTaskss, PropelPDO $con = null)
+    public function setCeleryTaskss(PropelCollection $celeryTaskss, ?PropelPDO $con = null)
     {
         $celeryTaskssToDelete = $this->getCeleryTaskss(new Criteria(), $con)->diff($celeryTaskss);
 
@@ -1361,7 +1361,7 @@ abstract class BaseThirdPartyTrackReferences extends BaseObject implements Persi
      * @return int             Count of related CeleryTasks objects.
      * @throws PropelException
      */
-    public function countCeleryTaskss(Criteria $criteria = null, $distinct = false, PropelPDO $con = null)
+    public function countCeleryTaskss(?Criteria $criteria = null, $distinct = false, ?PropelPDO $con = null)
     {
         $partial = $this->collCeleryTaskssPartial && !$this->isNew();
         if (null === $this->collCeleryTaskss || null !== $criteria || $partial) {

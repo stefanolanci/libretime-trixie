@@ -18,21 +18,15 @@ end
 def notify_stream(m)
   if web_stream_id() != "-1" then
     json_str = string.replace(pattern="\n",(fun (s) -> ""), json_of(m))
-    #if a string has a single apostrophe in it, let's comment it out by ending the string before right before it
-    #escaping the apostrophe, and then starting a new string right after it. This is why we use 3 apostrophes.
     json_str = string.replace(pattern="'",(fun (s) -> "'\''"), json_str)
-
     gateway("webstream '#{web_stream_id()}' '#{json_str}'")
   end
 end
 
-# A function applied to each metadata chunk
 def append_title(m) =
   log("Using message format #{message_format()}")
 
   if list.assoc.mem("mapped", m) then
-    # protection against applying this function twice. It shouldn't be happening and bug
-    # file with Liquidsoap.
     m
   else
       if message_format() == "1" then
@@ -49,6 +43,8 @@ def append_title(m) =
   end
 end
 
+# Transition for live DJ inputs (show/main harbor).
+# Duration is controlled by the UI setting "input_fade_transition".
 def transition(a,b) =
   log("transition called...")
   add(
@@ -63,14 +59,27 @@ def transition(a,b) =
   )
 end
 
-# Schedule <-> offline default: hard cut to the new branch (Liquidsoap 2.3 pads missing
-# switch transitions with `fun (x,y) -> y`). Upstream 2.1 used the same idea via
-# `transition_default` + `just_switched` so the first automation track after leaving
-# default was plain `b`, not wrapped in fade.in — on LS 2.3 + ffmpeg any fade.in on the
-# request.queue path can silence a whole track (~−91 dBFS) while metadata stays valid.
-# First arg is the outgoing branch (unused); returning `b` is the documented cut.
-def transition_schedule_cut(a, b) =
-  b
+# Transition from default (silent noise) to automation queue.
+# On the first switch after start_schedule(), crossfade for smooth ramp-in.
+# Later switches hard-cut: tracks carry per-track fade metadata (liq_fade_in/out).
+def transition_default(a,b) =
+  log("transition_default called...")
+  if just_switched() then
+    just_switched := false
+    add(
+      normalize=false,
+      [
+        sequence([
+          blank(duration=0.01),
+          fade.in(duration=input_fade_transition(), b)
+        ]),
+        fade.out(duration=input_fade_transition(), a)
+      ]
+    )
+  else
+    just_switched := false
+    b
+  end
 end
 
 def make_output_on_connect_handler(stream)
@@ -92,26 +101,8 @@ def clear_queue(s)
     source.skip(s)
 end
 
-# NOTE
-# A few values are hardcoded and may be dependent:
-#  - the delay in gracetime is linked with the buffer duration of input.http
-#    (delay should be a bit less than buffer)
-#  - crossing duration should be less than buffer length
-#    (at best, a higher duration will be ineffective)
-
-# HTTP input with "restart" command that waits for "stop" to be effected
-# before "start" command is issued. Optionally it takes a new URL to play,
-# which makes it a convenient replacement for "url".
-# In the future, this may become a core feature of the HTTP input.
-# TODO If we stop and restart quickly several times in a row,
-#   the data bursts accumulate and create buffer overflow.
-#   Flushing the buffer on restart could be a good idea, but
-#   it would also create an interruptions while the buffer is
-#   refilling... on the other hand, this would avoid having to
-#   fade using both cross() and switch().buffer=5.,max=15.,,autostart=false
-# input.ffmpeg relays http(s) streams and accepts a local file path for idle audio; input.http
-# with a bogus URL spams decoder errors. Telnet commands stay under the same source id (e.g. http.restart).
-# Default idle from entrypoint is lavfi anullsrc (infinite silence). File paths still work if configured.
+# HTTP input with "restart" command.  Uses input.ffmpeg which relays http(s)
+# streams and accepts lavfi sources for idle audio (e.g. anullsrc).
 def input.http_restart(~id, ~initial_url)
 
   ffmpeg_input =
@@ -120,9 +111,6 @@ def input.http_restart(~id, ~initial_url)
     else
       input.ffmpeg(id=id, initial_url)
     end
-  # No mksafe here: on LS 2.3.x it flips to safe_blank during idle lavfi/bootstrap and can
-  # interact badly with the main clock; anullsrc is already continuous. Web relay URLs rely
-  # on ffmpeg restart/stop handling in telnet commands.
   source = audio_to_stereo(ffmpeg_input)
 
   def stopped()
@@ -137,7 +125,8 @@ def input.http_restart(~id, ~initial_url)
                       log(string(server.execute("#{id}.url #{url}")))
                     end
                     log(string(server.execute("#{id}.stop")))
-                    add_timeout(0.5,
+                    # LS 2.3: thread.run.recurrent replaces add_timeout
+                    thread.run.recurrent(delay=0.5,
                       { if stopped() then
                           log(string(server.execute("#{id}.start"))) ;
                           (-1.)
@@ -149,3 +138,83 @@ def input.http_restart(~id, ~initial_url)
 
 end
 
+# Crossfade transitions between URL changes in HTTP web streams.
+def cross_http(~debug=true, ~http_input_id, source)
+  id = http_input_id
+  last_url = ref("")
+  change = ref(false)
+
+  def on_m(m) =
+    notify_stream(m)
+    changed = m["source_url"] != last_url()
+    log("URL now #{m['source_url']} (change: #{changed})")
+    if changed then
+      if last_url() != "" then change := true end
+      last_url := m["source_url"]
+    end
+    m
+  end
+  source = map_metadata(on_m, source)
+
+  cross_d = 3.
+
+  def crosser(ending, starting)
+    url = list.hd(server.execute("#{id}.url"), default="")
+    status = list.hd(server.execute("#{id}.status"))
+    on_m([("source_url", url)])
+    if debug then
+      log("New track inside HTTP stream")
+      log("  status: #{status}")
+      log("  need to cross: #{change()}")
+    end
+    if change() then
+      change := false
+      sequence([fade.out(duration=cross_d, ending.source), fade.in(starting.source)])
+    else
+      sequence([ending.source, starting.source])
+    end
+  end
+
+  # LS 2.3: conservative param removed.
+  cross(duration=cross_d, crosser, source)
+
+end
+
+# Fallback between HTTP web stream and default source with fading.
+def http_fallback(~http_input_id, ~http, ~default)
+
+  id = http_input_id
+
+  def gracetime(~delay=3., f)
+    last_true = ref(0.)
+    { if f() then
+        last_true := time()
+        true
+      else
+        time() < last_true() + delay
+    end }
+  end
+
+  def connected()
+    status = list.hd(server.execute("#{id}.status"), default="")
+    not(list.mem(status, ["polling", "stopped"]))
+  end
+  connected = gracetime(connected)
+
+  def to_live(a, b) =
+    log("TRANSITION to live")
+    add(normalize=false,
+      [fade.in(b), fade.out(a)])
+  end
+  def to_static(a, b) =
+    log("TRANSITION to static")
+    sequence([fade.out(a), fade.in(b)])
+  end
+
+  switch(
+    track_sensitive=false,
+    transitions=[to_live, to_static],
+    [({connected() and source.is_ready(http) and web_stream_enabled()}, http),
+     ({true}, default)])
+
+end
