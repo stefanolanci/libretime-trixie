@@ -5,6 +5,92 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MODE=""
+ASSUME_YES=false
+
+usage() {
+  cat <<'EOF'
+Usage: uninstall-libretime.sh [--keep-data | --remove-data | --purge-packages] [--yes]
+
+Choose exactly one uninstall level:
+  --keep-data
+      Remove LibreTime services, app code, configs, and web integration.
+      Keep media storage (/srv/libretime), PostgreSQL database, and RabbitMQ data.
+
+  --remove-data
+      Same as --keep-data, plus remove station data:
+      - media storage (/srv/libretime)
+      - PostgreSQL database/role (libretime)
+      - RabbitMQ user/vhost (libretime, /libretime)
+
+  --purge-packages
+      Same as --remove-data, plus attempt apt purge of common stack packages
+      typically installed by ./install (nginx, php-fpm, postgresql, rabbitmq,
+      redis, certbot, icecast, etc.).
+      WARNING: this can affect other applications on the same host.
+
+Extra:
+  --yes      Skip interactive confirmation prompt.
+  --help     Show this help.
+EOF
+}
+
+confirm_or_abort() {
+  local prompt="$1"
+  if $ASSUME_YES; then
+    return
+  fi
+  read -r -p "$prompt [type YES to continue]: " answer
+  if [[ "$answer" != "YES" ]]; then
+    echo "Aborted."
+    exit 1
+  fi
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --keep-data|--remove-data|--purge-packages)
+      if [[ -n "$MODE" ]]; then
+        echo "Error: choose only one uninstall level." >&2
+        usage
+        exit 1
+      fi
+      MODE="$1"
+      shift
+      ;;
+    --yes)
+      ASSUME_YES=true
+      shift
+      ;;
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Error: unknown argument '$1'" >&2
+      usage
+      exit 1
+      ;;
+  esac
+done
+
+if [[ -z "$MODE" ]]; then
+  echo "Error: uninstall level is required." >&2
+  usage
+  exit 1
+fi
+
+case "$MODE" in
+  --keep-data)
+    confirm_or_abort "Selected --keep-data (media/DB kept)."
+    ;;
+  --remove-data)
+    confirm_or_abort "Selected --remove-data (media/DB will be deleted)."
+    ;;
+  --purge-packages)
+    confirm_or_abort "Selected --purge-packages (media/DB and stack packages may be removed)."
+    ;;
+esac
 
 echo "=== Stopping LibreTime services ==="
 systemctl stop libretime.target 2>/dev/null || true
@@ -48,7 +134,11 @@ rm -rf /etc/libretime
 rm -rf /var/lib/libretime
 rm -rf /var/log/libretime
 rm -rf /usr/share/libretime
-rm -rf /srv/libretime
+if [[ "$MODE" == "--remove-data" || "$MODE" == "--purge-packages" ]]; then
+  rm -rf /srv/libretime
+else
+  echo "Keeping media storage at /srv/libretime"
+fi
 
 echo "=== Nginx (LibreTime + HTTPS proxy) / PHP-FPM / logrotate ==="
 rm -f /etc/nginx/sites-enabled/libretime.conf
@@ -99,17 +189,21 @@ if [[ -n "$CERT_NAME" ]] && command -v certbot >/dev/null 2>&1; then
   fi
 fi
 
-echo "=== PostgreSQL ==="
-if command -v psql >/dev/null && id postgres &>/dev/null; then
-  sudo -u postgres psql -tAc "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'libretime' AND pid <> pg_backend_pid();" 2>/dev/null || true
-  sudo -u postgres dropdb --if-exists libretime 2>/dev/null || true
-  sudo -u postgres psql -c "DROP ROLE IF EXISTS libretime;" 2>/dev/null || true
-fi
+if [[ "$MODE" == "--remove-data" || "$MODE" == "--purge-packages" ]]; then
+  echo "=== PostgreSQL ==="
+  if command -v psql >/dev/null && id postgres &>/dev/null; then
+    sudo -u postgres psql -tAc "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'libretime' AND pid <> pg_backend_pid();" 2>/dev/null || true
+    sudo -u postgres dropdb --if-exists libretime 2>/dev/null || true
+    sudo -u postgres psql -c "DROP ROLE IF EXISTS libretime;" 2>/dev/null || true
+  fi
 
-echo "=== RabbitMQ ==="
-if command -v rabbitmqctl >/dev/null 2>&1; then
-  rabbitmqctl delete_user libretime 2>/dev/null || true
-  rabbitmqctl delete_vhost /libretime 2>/dev/null || true
+  echo "=== RabbitMQ ==="
+  if command -v rabbitmqctl >/dev/null 2>&1; then
+    rabbitmqctl delete_user libretime 2>/dev/null || true
+    rabbitmqctl delete_vhost /libretime 2>/dev/null || true
+  fi
+else
+  echo "Keeping PostgreSQL and RabbitMQ data (mode: --keep-data)"
 fi
 
 echo "=== Icecast TLS leftovers (bundle + restore icecast.xml) ==="
@@ -147,5 +241,24 @@ done
 
 echo "=== Start Icecast again (if installed) ==="
 systemctl start icecast2 2>/dev/null || true
+
+if [[ "$MODE" == "--purge-packages" ]]; then
+  echo "=== Purging common LibreTime stack packages (best effort) ==="
+  if command -v apt-get >/dev/null 2>&1; then
+    DEBIAN_FRONTEND=noninteractive apt-get -y purge \
+      libretime\* \
+      nginx nginx-common \
+      certbot python3-certbot-nginx \
+      icecast2 \
+      rabbitmq-server redis-server \
+      postgresql postgresql-client \
+      php-fpm php8.4-fpm php8.4-cli php8.4-common php8.4-pgsql php8.4-curl php8.4-xml php8.4-mbstring php8.4-gd php8.4-intl php8.4-zip \
+      liquidsoap \
+      || true
+    DEBIAN_FRONTEND=noninteractive apt-get -y autoremove --purge || true
+  else
+    echo "apt-get not found: skipping package purge."
+  fi
+fi
 
 echo "=== Uninstall complete ==="

@@ -234,13 +234,22 @@ After `git pull` on an installed host, redeploy changed paths (legacy PHP, playo
 
 ## Uninstall
 
-Run as **root** from a checkout that still contains **`installer/icecast/icecast.xml`** (so Icecast can be reset from the template):
+Run as **root** from a checkout that still contains **`installer/icecast/icecast.xml`** (so Icecast can be reset from the template).
+You must now choose an explicit uninstall level:
 
 ```bash
-sudo bash installer/uninstall-libretime.sh
+sudo bash installer/uninstall-libretime.sh --keep-data
+# or
+sudo bash installer/uninstall-libretime.sh --remove-data
+# or
+sudo bash installer/uninstall-libretime.sh --purge-packages
 ```
 
-The script stops and disables LibreTime units, removes `/opt/libretime`, `/etc/libretime`, `/var/lib/libretime`, `/var/log/libretime`, `/usr/share/libretime`, `/srv/libretime`, systemd units, Nginx site files (including **HTTPS proxy** and any **Certbot-named** vhosts referencing Let’s Encrypt), **Certbot hooks** matching `*libretime*`, helper scripts under `/usr/local/sbin/*libretime*`, drops the **PostgreSQL** database and role, **RabbitMQ** user and vhost, deletes **`libretime` Lets Encrypt certificate** when `public_url` was HTTPS, removes **Icecast** `bundle.pem`, restores **`icecast.xml`** from the installer template (or reinstalls the `icecast2` package config), re-enables the default **Nginx** site if needed, and removes the **`libretime` system user**. It does **not** remove your **git clone directory** (e.g. `/root/libretime`). System packages (nginx, icecast2, redis, certbot, etc.) remain installed.
+- `--keep-data`: remove app/services/config while preserving media (`/srv/libretime`) and DB/broker data.
+- `--remove-data`: also remove media plus PostgreSQL/RabbitMQ LibreTime data.
+- `--purge-packages`: also attempt `apt purge` of common stack packages (dangerous on shared hosts).
+
+The script stops and disables LibreTime units, removes app trees and integrations (`/opt/libretime`, `/etc/libretime`, `/var/lib/libretime`, `/var/log/libretime`, `/usr/share/libretime`, systemd units, Nginx site files including HTTPS proxy/Let's Encrypt references, Certbot hooks, helper scripts), deletes **`libretime` Lets Encrypt certificate** when applicable, removes Icecast TLS bundle, restores `icecast.xml`, re-enables Nginx default site if needed, and removes the `libretime` system user. Data and package removal depend on the selected mode. It does **not** remove your **git clone directory** (e.g. `/root/libretime`) unless you do it manually.
 
 ---
 
