@@ -3225,7 +3225,7 @@ msgstr "Logo de la estación:"
 
 #: application/forms/GeneralPreferences.php:44
 msgid "Note: Anything larger than 600x600 will be resized."
-msgstr "Nota: Cualquiera mayor que 600x600 será redimensionada."
+msgstr "Nota: cualquier imagen mayor que 600x600 se redimensionara."
 
 #: application/forms/GeneralPreferences.php:63
 msgid "Default Crossfade Duration (s):"
@@ -3314,6 +3314,22 @@ msgstr "¿Mostrar el botón de inicio de sesión en su página de radio?"
 #: application/forms/GeneralPreferences.php:233
 msgid "Disable the public radio page and redirect to the login page?"
 msgstr "¿Desactivar la página de la radio pública y redirigir a la página de inicio de sesión?"
+
+#: application/forms/GeneralPreferences.php:64
+msgid "Radio Page Background Image:"
+msgstr "Imagen de fondo de la pagina de radio:"
+
+#: application/forms/GeneralPreferences.php:65
+msgid "Optional: upload an image for the public radio page background."
+msgstr "Opcional: suba una imagen de fondo para la pagina de radio publica."
+
+#: application/forms/GeneralPreferences.php:81
+msgid "Radio Page Background Fit"
+msgstr "Ajuste del fondo de la pagina de radio"
+
+#: application/forms/GeneralPreferences.php:86
+msgid "Cover fills the whole page and may crop the image. Contain shows the full image and may leave empty space."
+msgstr "Cover llena toda la pagina y puede recortar la imagen. Contain muestra la imagen completa y puede dejar espacios vacios."
 
 #: application/forms/GeneralPreferences.php:238
 msgid "Feature Previews"

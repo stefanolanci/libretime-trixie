@@ -228,21 +228,58 @@ var AIRTIME = (function (AIRTIME) {
       },
       params = {
         sAjaxSource: endpoint + $scope.podcast.id + "/episodes",
+        bServerSide: true,
+        bAutoWidth: true,
         aoColumns: [
-          // TODO: it might be wrong to use CcFiles here? We should alias this instead
           /* Title */ {
             sTitle: $.i18n._("Title"),
             mDataProp: "CcFiles.track_title",
             sClass: "podcast_episodes_title",
-            sWidth: "170px",
+          },
+          /* Creator */ {
+            sTitle: $.i18n._("Creat."),
+            mDataProp: "CcFiles.artist_name",
+            sClass: "library_creator",
+          },
+          /* Album */ {
+            sTitle: $.i18n._("Album"),
+            mDataProp: "CcFiles.album_title",
+            sClass: "library_album",
+            bVisible: false,
+          },
+          /* Genre */ {
+            sTitle: $.i18n._("Genre"),
+            mDataProp: "CcFiles.genre",
+            sClass: "library_genre",
+            bVisible: false,
+          },
+          /* Length */ {
+            sTitle: $.i18n._("Length"),
+            mDataProp: "CcFiles.length",
+            sClass: "library_length",
+            sWidth: "80px",
           },
           /* Description */ {
-            sTitle: $.i18n._("Description"),
+            sTitle: $.i18n._("Descr."),
             mDataProp: "CcFiles.description",
             sClass: "podcast_episodes_description",
-            sWidth: "300px",
+          },
+          /* Year */ {
+            sTitle: $.i18n._("Year"),
+            mDataProp: "CcFiles.year",
+            sClass: "library_year",
+            sWidth: "60px",
+            bVisible: false,
           },
         ],
+        oColVis: {
+          buttonText: $.i18n._("Columns"),
+          iOverlayFade: 0,
+          aiExclude: [0],
+        },
+        oColReorder: {
+          iFixedColumns: 1,
+        },
       };
 
     this.episodeTable = AIRTIME.podcast.initPodcastEpisodeDatatable(
@@ -920,6 +957,12 @@ var AIRTIME = (function (AIRTIME) {
     buttons,
     config,
   ) {
+    var callerColumns = params.aoColumns ? JSON.parse(JSON.stringify(params.aoColumns)) : undefined;
+    var callerAjaxSource = params.sAjaxSource;
+    var callerServerSide = params.bServerSide;
+    var callerColVis = params.oColVis ? JSON.parse(JSON.stringify(params.oColVis)) : undefined;
+    var callerColReorder = params.oColReorder ? JSON.parse(JSON.stringify(params.oColReorder)) : undefined;
+
     params = $.extend(true, params, {
       aoColumns: [
         /* GUID */ {
@@ -1044,6 +1087,12 @@ var AIRTIME = (function (AIRTIME) {
             .css("visibility", "hidden");
       },
     });
+
+    if (callerColumns) params.aoColumns = callerColumns;
+    if (callerAjaxSource) params.sAjaxSource = callerAjaxSource;
+    if (callerServerSide !== undefined) params.bServerSide = callerServerSide;
+    if (callerColVis) params.oColVis = callerColVis;
+    if (callerColReorder) params.oColReorder = callerColReorder;
 
     if (typeof PodcastEpisodeTable === "undefined") {
       _initPodcastEpisodeTable();

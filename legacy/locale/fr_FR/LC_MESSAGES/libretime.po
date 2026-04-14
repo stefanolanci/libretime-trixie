@@ -3314,6 +3314,22 @@ msgstr "Afficher le bouton de connexion sur votre page radio ?"
 msgid "Disable the public radio page and redirect to the login page?"
 msgstr "Désactiver la page de la radio pour le public et rediriger directement vers la page de connexion ?"
 
+#: application/forms/GeneralPreferences.php:64
+msgid "Radio Page Background Image:"
+msgstr "Image d'arriere-plan de la page radio :"
+
+#: application/forms/GeneralPreferences.php:65
+msgid "Optional: upload an image for the public radio page background."
+msgstr "Optionnel : televersez une image d'arriere-plan pour la page radio publique."
+
+#: application/forms/GeneralPreferences.php:81
+msgid "Radio Page Background Fit"
+msgstr "Ajustement de l'arriere-plan de la page radio"
+
+#: application/forms/GeneralPreferences.php:86
+msgid "Cover fills the whole page and may crop the image. Contain shows the full image and may leave empty space."
+msgstr "Cover remplit toute la page et peut rogner l'image. Contain affiche l'image complete et peut laisser des espaces vides."
+
 #: application/forms/GeneralPreferences.php:238
 msgid "Feature Previews"
 msgstr "Aperçus de fonctionnalités"

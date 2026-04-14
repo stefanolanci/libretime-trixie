@@ -241,11 +241,21 @@ class Application_Service_PodcastEpisodeService extends Application_Service_Thir
     public function publish($fileId)
     {
         $id = Application_Model_Preference::getStationPodcastId();
-        $url = $guid = Config::getPublicUrl() . "rest/media/{$fileId}/download";
-        if (!PodcastEpisodesQuery::create()
+        $publicUrl = Config::getPublicUrl();
+        $url = $guid = $publicUrl . "rest/media/{$fileId}/download";
+
+        $file = CcFilesQuery::create()->findPk($fileId);
+        $title = $file ? $file->getDbTrackTitle() : '';
+        $description = $file ? $file->getDbDescription() : '';
+        if (empty($title)) {
+            $title = "Track {$fileId}";
+        }
+
+        $existing = PodcastEpisodesQuery::create()
             ->filterByDbPodcastId($id)
-            ->findOneByDbFileId($fileId)) {  // Don't allow duplicate episodes
-            $e = $this->_buildEpisode($id, $url, $guid, date('r'));
+            ->findOneByDbFileId($fileId);
+        if (!$existing) {
+            $e = $this->_buildEpisode($id, $url, $guid, date('r'), $title, $description);
             $e->setDbFileId($fileId)->save();
         }
     }

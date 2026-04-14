@@ -71,6 +71,7 @@ class LoginController extends Zend_Controller_Action
 
                 // set the user locale in case user changed it in when logging in
                 Application_Model_Preference::SetUserLocale($locale);
+                setcookie('airtime_locale', $locale, time() + (365 * 24 * 60 * 60), '/');
 
                 $this->_redirect('showbuilder');
             } else {

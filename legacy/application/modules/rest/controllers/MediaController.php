@@ -209,8 +209,13 @@ class Rest_MediaController extends Zend_Rest_Controller
         $id = $this->getId();
 
         try {
-            // Is there a better way to do this?
-            $data = json_decode($this->getRequest()->getRawBody(), true)['sources'];
+            $rawBody = $this->getRequest()->getRawBody();
+            $decoded = json_decode($rawBody, true);
+            $data = $decoded['sources'] ?? null;
+            if (empty($data)) {
+                $this->getResponse()->setHttpResponseCode(400)->appendBody('ERROR: No sources specified.');
+                return;
+            }
             Application_Service_PublishService::publish($id, $data);
             $this->getResponse()
                 ->setHttpResponseCode(200);
@@ -223,10 +228,14 @@ class Rest_MediaController extends Zend_Rest_Controller
     public function publishSourcesAction()
     {
         $id = $this->_getParam('id', false);
-        $sources = Application_Service_PublishService::getSourceLists($id);
-        $this->getResponse()
-            ->setHttpResponseCode(200)
-            ->appendBody(json_encode($sources));
+        try {
+            $sources = Application_Service_PublishService::getSourceLists($id);
+            $this->getResponse()
+                ->setHttpResponseCode(200)
+                ->appendBody(json_encode($sources));
+        } catch (Exception $e) {
+            $this->getResponse()->setHttpResponseCode(500)->appendBody(json_encode(['error'=>$e->getMessage()]));
+        }
     }
 
     private function getId()

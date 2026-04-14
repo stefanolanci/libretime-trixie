@@ -37,8 +37,6 @@ var AIRTIME = (function (AIRTIME) {
             tab.setName($scope.media.track_title);
           });
 
-        // Get an object containing all sources, their translated labels,
-        // and their publication state for the file with the given ID
         $http
           .get(endpoint + mediaId + "/publish-sources", {
             csrf_token: csrfToken,
@@ -52,6 +50,8 @@ var AIRTIME = (function (AIRTIME) {
                 $scope.sources.toPublish.push(this);
               }
             });
+          })
+          .error(function (data, status) {
           });
       }
 
@@ -82,7 +82,7 @@ var AIRTIME = (function (AIRTIME) {
         var data = {};
         jQuery.each($scope.publishData, function (k, v) {
           if (v) {
-            data[k] = "publish"; // FIXME: should be more robust
+            data[k] = "publish";
           }
         });
 
@@ -95,8 +95,9 @@ var AIRTIME = (function (AIRTIME) {
             .success(function () {
               tab.contents.find(".publish-btn").prop("disabled", true);
               fetchSourceData();
-              $scope.publishData = {}; // Reset the publishData in case the user publishes
-              // and unpublishes without closing the tab
+              $scope.publishData = {};
+            })
+            .error(function (data, status) {
             });
         }
       };

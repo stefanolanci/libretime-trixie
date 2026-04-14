@@ -210,6 +210,11 @@ Open whatever clients need:
 
 Targeted fixes for **Debian 13 / Liquidsoap 2.3** and races between UI, API, and playout:
 
+- **Station podcast workflow restored and expanded:** re-enabled **Publish** from Tracks context menu, fixed episode publish persistence (`episode_title` / metadata flow), restored **My Podcast** navigation entry, and fixed empty episode table behavior in the management page.
+- **My Podcast table UX parity:** added proper server-side DataTables behavior, stable column definitions, working **Columns** visibility/reorder controls, and cleaner labels for narrow ColVis dropdowns.
+- **Public radio page background controls:** General Settings now supports upload/remove for a dedicated radio-page background image, persistent `cover` / `contain` fit preference, fallback behavior, and frontend rendering on the public homepage with dark overlay compatibility.
+- **General settings visual refinements:** station logo and background image controls/previews are aligned and proportioned consistently, including placeholder behavior when no custom background is set.
+- **Localization reliability and translation pass:** login locale selection now persists correctly (cookie + user preference), locale bootstrap handling was hardened for gettext on PHP 8.4, and key UI strings were refined in `en_US`, `en_GB`, `it_IT`, `fr_FR`, `es_ES`, and `pt_BR`.
 - **First-track volume fix:** bootstrap sequence reordered — `schedule_streaming` is only activated after `PypoPush` has pushed the initial tracks to Liquidsoap's `request.queue`, preventing `amplify` from missing `libretime_replay_gain` metadata on the first track.
 - **Live / harbor:** legacy updates **database connection state before** publishing the RabbitMQ `switch_source` message (`ApiController::updateSourceStatusAction`, `DashboardController::switchSourceAction`) so `GET /api/v2/stream/state` and playout stay consistent.
 - **Liquidsoap source selection:** harbor **show** / **main** switches no longer require `source.is_ready(...)` only — on LS 2.3 it can stay false with valid PCM, which left automation on air despite a connected encoder.

@@ -123,6 +123,16 @@ function removeLogo() {
   );
 }
 
+function removeBackgroundImage() {
+  $.post(
+    baseUrl + "preference/remove-background-image",
+    { csrf_token: $("#csrf").val() },
+    function (json) {
+      location.href = location.href.replace(location.hash, "");
+    },
+  );
+}
+
 function deleteAllFiles() {
   var resp = confirm(
     $.i18n._("Are you sure you want to delete all the tracks in your library?"),
@@ -194,10 +204,46 @@ $(document).ready(function () {
     },
   );
 
+  $(document).on(
+    "change",
+    "#pref_form input[type=file][name*='stationBackgroundImage']",
+    function () {
+      var preview = $("#station-background-preview");
+      var $input = $(this);
+      if (this.files && this.files[0]) {
+        preview.show().css({ visibility: "visible", opacity: "" });
+        var reader = new FileReader();
+        reader.onload = function (ev) {
+          preview
+            .attr("src", ev.target.result)
+            .css({ visibility: "visible", display: "block" });
+        };
+
+        if (validateImage(this.files[0], $input)) {
+          reader.readAsDataURL(this.files[0]);
+          $("#background-remove-btn").show();
+        } else {
+          $input.val("").replaceWith($input.clone(true));
+          preview.hide();
+        }
+      } else {
+        preview.hide();
+      }
+    },
+  );
+
   var preview = $("#station-logo-preview");
   var previewSrc = preview.length ? preview.attr("src") : "";
   if (previewSrc && previewSrc.indexOf("images/") > -1) {
     $("#logo-remove-btn").hide();
+  }
+
+  var backgroundPreview = $("#station-background-preview");
+  if (
+    !backgroundPreview.length ||
+    backgroundPreview.attr("data-has-custom-background") !== "1"
+  ) {
+    $("#background-remove-btn").hide();
   }
 
   showErrorSections();

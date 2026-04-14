@@ -151,7 +151,7 @@ function updatePlaybar() {
 
         if (check_current_song != currentSong.name) {
           $("#now-playing-artwork_containter").html(
-            "<img height='75' width='75' class='artwork' src='" +
+            "<img class='artwork' src='" +
               currentSong.metadata.artwork_data +
               "' />",
           );

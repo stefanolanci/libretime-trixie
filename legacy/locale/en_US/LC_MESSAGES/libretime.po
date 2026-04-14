@@ -3294,19 +3294,35 @@ msgstr "Week Starts On"
 
 #: application/forms/GeneralPreferences.php:220
 msgid "Display login button on your Radio Page?"
-msgstr ""
+msgstr "Display login button on your Radio Page?"
 
 #: application/forms/GeneralPreferences.php:233
 msgid "Disable the public radio page and redirect to the login page?"
-msgstr ""
+msgstr "Disable the public radio page and redirect to the login page?"
+
+#: application/forms/GeneralPreferences.php:64
+msgid "Radio Page Background Image:"
+msgstr "Radio Page Background Image:"
+
+#: application/forms/GeneralPreferences.php:65
+msgid "Optional: upload an image for the public radio page background."
+msgstr "Optional: upload an image for the public radio page background."
+
+#: application/forms/GeneralPreferences.php:81
+msgid "Radio Page Background Fit"
+msgstr "Radio Page Background Fit"
+
+#: application/forms/GeneralPreferences.php:86
+msgid "Cover fills the whole page and may crop the image. Contain shows the full image and may leave empty space."
+msgstr "Cover fills the whole page and may crop the image. Contain shows the full image and may leave empty space."
 
 #: application/forms/GeneralPreferences.php:238
 msgid "Feature Previews"
-msgstr ""
+msgstr "Feature Previews"
 
 #: application/forms/GeneralPreferences.php:244
 msgid "Enable this to opt-in to test new features."
-msgstr ""
+msgstr "Enable this to opt-in to test new features."
 
 #: application/forms/LiveStreamingPreferences.php:15
 msgid "Auto Switch Off:"

@@ -5,18 +5,42 @@
 
         <?php echo $this->element->getElement('stationDescription')->render() ?>
 
-        <?php echo $this->element->getElement('stationLogo')->render() ?>
+        <div class="radio-page-assets-row">
+            <div class="radio-page-asset-col">
+                <div class="radio-page-asset-controls">
+                    <?php echo $this->element->getElement('stationLogo')->render() ?>
+                    <?php echo $this->element->getElement('stationLogoRemove')->render() ?>
+                </div>
+                <div id="Logo-img-container">
+                    <?php
+                    $logoImg = $this->element->getView()->logoImg;
+                    $src = "data:image/png;base64," . $logoImg;
+                    ?>
+                    <img onError="this.onerror = '';this.style.visibility='hidden';$('#logo-remove-btn').hide();" id="station-logo-preview" onload='/*resizeImg(this, 450, 450);*/' src="<?php echo $src ?>" />
+                </div>
+            </div>
 
-        <?php echo $this->element->getElement('stationLogoRemove')->render() ?>
-
-        <!--        <button id="logo-remove-btn" value="Remove" class="btn">Remove</button>-->
-
-        <div id="Logo-img-container">
-            <?php
-            $logoImg = $this->element->getView()->logoImg;
-            $src = "data:image/png;base64," . $logoImg;
-            ?>
-            <img onError="this.onerror = '';this.style.visibility='hidden';$('#logo-remove-btn').hide();" id="station-logo-preview" onload='/*resizeImg(this, 450, 450);*/' src="<?php echo $src ?>" />
+            <div class="radio-page-asset-col">
+                <div class="radio-page-asset-controls">
+                    <?php echo $this->element->getElement('stationBackgroundImage')->render() ?>
+                    <?php echo $this->element->getElement('stationBackgroundRemove')->render() ?>
+                </div>
+                <div id="Background-img-container">
+                    <?php
+                    $backgroundImg = $this->element->getView()->backgroundImg;
+                    $hasCustomBackground = !empty($backgroundImg);
+                    $backgroundSrc = $hasCustomBackground
+                        ? "data:image/png;base64," . $backgroundImg
+                        : Assets::url('css/radio-page/img/background-testing-3.jpg');
+                    ?>
+                    <img
+                        onError="this.onerror='';this.style.visibility='hidden';$('#background-remove-btn').hide();"
+                        id="station-background-preview"
+                        data-has-custom-background="<?php echo $hasCustomBackground ? '1' : '0' ?>"
+                        src="<?php echo $backgroundSrc ?>" />
+                </div>
+                <?php echo $this->element->getElement('stationBackgroundSize')->render() ?>
+            </div>
         </div>
 
         <?php echo $this->element->getElement('locale')->render() ?>

@@ -117,9 +117,7 @@ class LibraryController extends Zend_Controller_Action
             if ($isAdminOrPM || $file->getFileOwnerId() == $user->getId()) {
                 $menu['del'] = ['name' => _('Delete'), 'icon' => 'delete', 'url' => $baseUrl . 'library/delete'];
                 $menu['edit'] = ['name' => _('Edit...'), 'icon' => 'edit', 'url' => $baseUrl . "library/edit-file-md/id/{$id}"];
-                // Disable My podcasts
-                // See https://github.com/libretime/libretime/issues/1320
-                // $menu["publish"] = array("name"=> _("Publish..."), "url" => $baseUrl."library/publish/id/{$id}");
+                $menu['publish'] = ['name' => _('Publish...'), 'icon' => 'overview', 'url' => $baseUrl . "library/publish/id/{$id}"];
             }
 
             $url = $baseUrl . "api/get-media/file/{$id}/download/true";

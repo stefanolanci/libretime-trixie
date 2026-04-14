@@ -14,6 +14,18 @@
     }
 </script>
 
+<?php if (!empty($this->radioPageBackgroundImage)): ?>
+<style>
+html {
+    background-image: url("data:image/png;base64,<?php echo $this->radioPageBackgroundImage ?>");
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-attachment: fixed;
+    background-size: <?php echo $this->radioPageBackgroundSize ?>;
+}
+</style>
+<?php endif; ?>
+
 <div class="wrapper">
 
     <div class="bck_cover"></div>

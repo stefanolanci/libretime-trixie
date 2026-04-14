@@ -59,6 +59,34 @@ class Application_Form_GeneralPreferences extends Zend_Form_SubForm
         $stationLogoRemove->setAttrib('onclick', 'removeLogo();');
         $this->addElement($stationLogoRemove);
 
+        // Radio Page Background Image
+        $stationBackgroundUpload = new Zend_Form_Element_File('stationBackgroundImage');
+        $stationBackgroundUpload->setLabel(_('Radio Page Background Image:'))
+            ->setDescription(_('Optional: upload an image for the public radio page background.'))
+            ->setRequired(false)
+            ->addValidator('Count', false, 1)
+            ->addValidator('Extension', false, 'jpg,jpeg,png,gif,webp')
+            ->setMaxFileSize(5000000);
+        $stationBackgroundUpload->setAttrib('accept', 'image/*');
+        $this->addElement($stationBackgroundUpload);
+
+        $stationBackgroundRemove = new Zend_Form_Element_Button('stationBackgroundRemove');
+        $stationBackgroundRemove->setLabel(_('Remove'));
+        $stationBackgroundRemove->setAttrib('class', 'btn');
+        $stationBackgroundRemove->setAttrib('id', 'background-remove-btn');
+        $stationBackgroundRemove->setAttrib('onclick', 'removeBackgroundImage();');
+        $this->addElement($stationBackgroundRemove);
+
+        $stationBackgroundSize = new Zend_Form_Element_Select('stationBackgroundSize');
+        $stationBackgroundSize->setLabel(_('Radio Page Background Fit'));
+        $stationBackgroundSize->setMultiOptions([
+            'cover' => _('Cover'),
+            'contain' => _('Contain'),
+        ]);
+        $stationBackgroundSize->setDescription(_('Cover fills the whole page and may crop the image. Contain shows the full image and may leave empty space.'));
+        $stationBackgroundSize->setValue(Application_Model_Preference::GetRadioPageBackgroundSize());
+        $this->addElement($stationBackgroundSize);
+
         // Default station crossfade duration
         $this->addElement('text', 'stationDefaultCrossfadeDuration', [
             'class' => 'input_text',

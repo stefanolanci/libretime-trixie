@@ -43,6 +43,8 @@ class IndexController extends Zend_Controller_Action
         }
 
         $this->view->stationLogo = Application_Model_Preference::GetStationLogo();
+        $this->view->radioPageBackgroundImage = Application_Model_Preference::GetRadioPageBackgroundImage();
+        $this->view->radioPageBackgroundSize = Application_Model_Preference::GetRadioPageBackgroundSize();
 
         $stationName = Application_Model_Preference::GetStationName();
         $this->view->stationName = $stationName;

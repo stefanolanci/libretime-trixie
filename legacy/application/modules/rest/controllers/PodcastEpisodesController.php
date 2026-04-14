@@ -46,10 +46,12 @@ class Rest_PodcastEpisodesController extends Zend_Rest_Controller
             $sortColumn = $this->_getParam('sort', PodcastEpisodesPeer::ID);
             $sortDir = $this->_getParam('sort_dir', Criteria::ASC);
 
+            $episodes = $this->_service->getPodcastEpisodes($id, $offset, $limit, $sortColumn, $sortDir);
+
             $this->getResponse()
                 ->setHttpResponseCode(201)
                 ->setHeader('X-TOTAL-COUNT', $totalPodcastEpisodesCount)
-                ->appendBody(json_encode($this->_service->getPodcastEpisodes($id, $offset, $limit, $sortColumn, $sortDir)));
+                ->appendBody(json_encode($episodes));
         } catch (PodcastNotFoundException $e) {
             $this->podcastNotFoundResponse();
             Logging::error($e->getMessage());

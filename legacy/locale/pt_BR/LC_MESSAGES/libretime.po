@@ -3213,7 +3213,7 @@ msgstr "Logo da Estação:"
 
 #: application/forms/GeneralPreferences.php:44
 msgid "Note: Anything larger than 600x600 will be resized."
-msgstr "Nota: qualquer arquivo maior que 600x600 será redimensionado"
+msgstr "Nota: qualquer imagem maior que 600x600 sera redimensionada."
 
 #: application/forms/GeneralPreferences.php:63
 msgid "Default Crossfade Duration (s):"
@@ -3295,19 +3295,35 @@ msgstr "Semana Inicia Em"
 
 #: application/forms/GeneralPreferences.php:220
 msgid "Display login button on your Radio Page?"
-msgstr ""
+msgstr "Exibir botao de login na sua pagina de radio?"
 
 #: application/forms/GeneralPreferences.php:233
 msgid "Disable the public radio page and redirect to the login page?"
-msgstr ""
+msgstr "Desativar a pagina de radio publica e redirecionar para a pagina de login?"
+
+#: application/forms/GeneralPreferences.php:64
+msgid "Radio Page Background Image:"
+msgstr "Imagem de fundo da pagina de radio:"
+
+#: application/forms/GeneralPreferences.php:65
+msgid "Optional: upload an image for the public radio page background."
+msgstr "Opcional: envie uma imagem de fundo para a pagina de radio publica."
+
+#: application/forms/GeneralPreferences.php:81
+msgid "Radio Page Background Fit"
+msgstr "Ajuste do fundo da pagina de radio"
+
+#: application/forms/GeneralPreferences.php:86
+msgid "Cover fills the whole page and may crop the image. Contain shows the full image and may leave empty space."
+msgstr "Cover preenche toda a pagina e pode cortar a imagem. Contain mostra a imagem completa e pode deixar espacos vazios."
 
 #: application/forms/GeneralPreferences.php:238
 msgid "Feature Previews"
-msgstr ""
+msgstr "Pre-visualizacao de recursos"
 
 #: application/forms/GeneralPreferences.php:244
 msgid "Enable this to opt-in to test new features."
-msgstr ""
+msgstr "Ative esta opcao para testar novos recursos."
 
 #: application/forms/LiveStreamingPreferences.php:15
 msgid "Auto Switch Off:"

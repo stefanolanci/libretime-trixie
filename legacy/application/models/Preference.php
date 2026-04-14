@@ -649,6 +649,42 @@ class Application_Model_Preference
         return base64_encode($image);
     }
 
+    public static function SetRadioPageBackgroundImage($imagePath)
+    {
+        if ($imagePath === '' || $imagePath === null) {
+            Logging::info('Removed radio page background image');
+            self::setValue('radio_page_background_image', '');
+
+            return;
+        }
+
+        $image = @file_get_contents($imagePath);
+        if ($image === false) {
+            Logging::warn('Could not read radio page background image file: ' . $imagePath);
+
+            return;
+        }
+        self::setValue('radio_page_background_image', base64_encode($image));
+    }
+
+    public static function GetRadioPageBackgroundImage()
+    {
+        return self::getValue('radio_page_background_image');
+    }
+
+    public static function SetRadioPageBackgroundSize($value)
+    {
+        $size = in_array($value, ['cover', 'contain'], true) ? $value : 'cover';
+        self::setValue('radio_page_background_size', $size);
+    }
+
+    public static function GetRadioPageBackgroundSize()
+    {
+        $value = self::getValue('radio_page_background_size');
+
+        return in_array($value, ['cover', 'contain'], true) ? $value : 'cover';
+    }
+
     public static function SetUniqueId($id)
     {
         self::setValue('uniqueId', $id);

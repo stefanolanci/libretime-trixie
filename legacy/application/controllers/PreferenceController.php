@@ -71,6 +71,16 @@ class PreferenceController extends Zend_Controller_Action
                     Application_Model_Preference::SetStationLogo($imagePath);
                 }
 
+                $backgroundUploadElement = $form->getSubForm('preferences_general')->getElement('stationBackgroundImage');
+                $backgroundUploadElement->receive();
+                $backgroundImagePath = $backgroundUploadElement->getFileName();
+
+                if (!empty($backgroundImagePath) && $backgroundImagePath != '') {
+                    Application_Model_Preference::SetRadioPageBackgroundImage($backgroundImagePath);
+                }
+
+                Application_Model_Preference::SetRadioPageBackgroundSize($values['stationBackgroundSize'] ?? 'cover');
+
                 Application_Model_Preference::setTuneinEnabled($values['enable_tunein'] ?? '0');
                 Application_Model_Preference::setTuneinStationId($values['tunein_station_id'] ?? '');
                 Application_Model_Preference::setTuneinPartnerKey($values['tunein_partner_key'] ?? '');
@@ -86,6 +96,7 @@ class PreferenceController extends Zend_Controller_Action
             }
         }
         $this->view->logoImg = Application_Model_Preference::GetStationLogo();
+        $this->view->backgroundImg = Application_Model_Preference::GetRadioPageBackgroundImage();
 
         $this->view->form = $form;
     }
@@ -132,6 +143,24 @@ class PreferenceController extends Zend_Controller_Action
         }
 
         Application_Model_Preference::SetStationLogo('');
+        $this->_helper->json->sendJson(['valid' => true]);
+    }
+
+    public function removeBackgroundImageAction()
+    {
+        SessionHelper::reopenSessionForWriting();
+
+        $this->view->layout()->disableLayout();
+        $this->_helper->viewRenderer->setNoRender(true);
+
+        if (!SecurityHelper::verifyCSRFToken($this->_getParam('csrf_token'))) {
+            Logging::error(__FILE__ . ': Invalid CSRF token');
+            $this->_helper->json->sendJson(['jsonrpc' => '2.0', 'valid' => false, 'error' => 'CSRF token did not match.']);
+
+            return;
+        }
+
+        Application_Model_Preference::SetRadioPageBackgroundImage('');
         $this->_helper->json->sendJson(['valid' => true]);
     }
 

@@ -3215,7 +3215,7 @@ msgstr "Logo stazione: "
 
 #: application/forms/GeneralPreferences.php:44
 msgid "Note: Anything larger than 600x600 will be resized."
-msgstr "Note: La lunghezze superiori a 600x600 saranno ridimensionate."
+msgstr "Nota: le dimensioni superiori a 600x600 saranno ridimensionate."
 
 #: application/forms/GeneralPreferences.php:63
 msgid "Default Crossfade Duration (s):"
@@ -3270,11 +3270,11 @@ msgstr ""
 
 #: application/forms/GeneralPreferences.php:170
 msgid "Public LibreTime API"
-msgstr ""
+msgstr "API pubblica LibreTime"
 
 #: application/forms/GeneralPreferences.php:171
 msgid "Required for embeddable schedule widget."
-msgstr ""
+msgstr "Necessario per il widget schedule incorporabile."
 
 #: application/forms/GeneralPreferences.php:177
 msgid ""
@@ -3284,12 +3284,12 @@ msgstr ""
 
 #: application/forms/GeneralPreferences.php:189
 msgid "Default Language"
-msgstr ""
+msgstr "Lingua predefinita"
 
 #: application/forms/GeneralPreferences.php:196
 #: application/forms/SetupLanguageTimezone.php:22
 msgid "Station Timezone"
-msgstr ""
+msgstr "Fuso orario stazione"
 
 #: application/forms/GeneralPreferences.php:204
 msgid "Week Starts On"
@@ -3297,19 +3297,35 @@ msgstr "La settimana inizia il"
 
 #: application/forms/GeneralPreferences.php:220
 msgid "Display login button on your Radio Page?"
-msgstr ""
+msgstr "Mostrare il pulsante di login nella pagina radio pubblica?"
 
 #: application/forms/GeneralPreferences.php:233
 msgid "Disable the public radio page and redirect to the login page?"
-msgstr ""
+msgstr "Disabilitare la pagina radio pubblica e reindirizzare alla pagina di login?"
+
+#: application/forms/GeneralPreferences.php:64
+msgid "Radio Page Background Image:"
+msgstr "Immagine di sfondo pagina radio:"
+
+#: application/forms/GeneralPreferences.php:65
+msgid "Optional: upload an image for the public radio page background."
+msgstr "Opzionale: carica un'immagine di sfondo per la pagina radio pubblica."
+
+#: application/forms/GeneralPreferences.php:81
+msgid "Radio Page Background Fit"
+msgstr "Adattamento sfondo pagina radio"
+
+#: application/forms/GeneralPreferences.php:86
+msgid "Cover fills the whole page and may crop the image. Contain shows the full image and may leave empty space."
+msgstr "Cover riempie tutta la pagina e puo ritagliare l'immagine. Contain mostra l'immagine completa e puo lasciare spazio vuoto."
 
 #: application/forms/GeneralPreferences.php:238
 msgid "Feature Previews"
-msgstr ""
+msgstr "Anteprime funzionalita"
 
 #: application/forms/GeneralPreferences.php:244
 msgid "Enable this to opt-in to test new features."
-msgstr ""
+msgstr "Abilita questa opzione per provare in anteprima nuove funzionalita."
 
 #: application/forms/LiveStreamingPreferences.php:15
 msgid "Auto Switch Off:"
