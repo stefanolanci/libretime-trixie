@@ -278,7 +278,7 @@ def main() -> None:
     criteria = legacy / "vendor/libretime/propel1/runtime/lib/query/Criteria.php"
     if criteria.is_file():
         tc = criteria.read_text(encoding="utf-8", errors="replace")
-        if "public function getIterator()" in tc and "): Traversable" not in tc:
+        if "public function getIterator()" in tc and "getIterator(): \\Traversable" not in tc:
             tc = tc.replace(
                 "public function getIterator()",
                 "public function getIterator(): \\Traversable",
