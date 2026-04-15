@@ -227,7 +227,7 @@ Targeted fixes for **Debian 13 / Liquidsoap 2.3** and races between UI, API, and
 - **Liquidsoap cleanup:** dead functions (`transition_default`, `to_live`, `cross_http`, `http_fallback`) removed from `ls_lib.liq`; `make_ouput_` typo corrected to `make_output_` in both `ls_lib.liq` and the Jinja output template.
 - **Python modernization:** `datetime.utcnow()` replaced with `datetime.now(timezone.utc)` across the playout package; `UnboundLocalError` risk fixed in analyzer `message_listener.py`.
 - **Install robustness:** `--wizard` validates TTY, blocks upgrade usage, and rejects combined positional URL; flags requiring arguments now fail with a clear message instead of a cryptic `shift` error; first install without a URL or `--wizard` is now blocked.
-- **Version label:** root `VERSION` file (e.g. `0.0.1 trixie`); `tools/version.sh` does **not** overwrite it when it already contains a semver.
+- **Version label:** root `VERSION` file (e.g. `0.0.2 trixie`); `tools/version.sh` does **not** overwrite it when it already contains a semver.
 
 A chronological **development log** (Italian) lives in [`docs/development-log.md`](docs/development-log.md). Optional Cursor rule summary: [`.cursor/rules/development-log.mdc`](.cursor/rules/development-log.mdc).
 

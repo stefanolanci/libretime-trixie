@@ -12,7 +12,7 @@ command -v tee > /dev/null || error "tee command not found!"
 
 typeset -r version_file="VERSION"
 
-# Committed distribution label (e.g. "0.0.1 trixie"): do not replace with git ref.
+# Committed distribution label (e.g. "0.0.2 trixie"): do not replace with git ref.
 if [[ -f "$version_file" ]] && grep -qE '^[0-9]+\.[0-9]+\.[0-9]+' "$version_file" 2>/dev/null; then
   exit 0
 fi
