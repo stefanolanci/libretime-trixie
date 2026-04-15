@@ -2,6 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="<?php echo $this->css ?>" type="text/css">
     <script src="<?php echo $this->jquery ?>" type="text/javascript"></script>
     <link href='https://fonts.googleapis.com/css?family=Roboto:400,100,300,700' rel='stylesheet' type='text/css'>
@@ -45,6 +46,25 @@
     <script type="text/javascript">
         let importSchedule = <?php echo $this->schedule_data; ?>; // Object prepared in JSON, w/o API call
         let cleanSchedule = [];
+        /** IANA timezone (station default) — row times use this; day buckets use UTC keys like PHP weekDays */
+        let stationTimezone = <?php echo json_encode($this->station_timezone); ?>;
+
+        function utcYmdKeyFromTs(sec) {
+            var d = new Date(sec * 1000);
+            return d.getUTCFullYear() + "-" + (d.getUTCMonth() + 1) + "-" + d.getUTCDate();
+        }
+
+        function formatHourInZone(d, tz) {
+            try {
+                return d.toLocaleTimeString(undefined, {
+                    hour: 'numeric',
+                    minute: 'numeric',
+                    timeZone: tz
+                });
+            } catch (e) {
+                return d.toLocaleTimeString([], { hour: 'numeric', minute: 'numeric' });
+            }
+        }
 
         // Insert shows into correct locations in importShows array (work-around for API v.1)
         let importShows = importSchedule["shows"];
@@ -52,19 +72,13 @@
             // Convert timestamps to JS (sec -> millisec)
             var start_date = new Date(element.starts_timestamp * 1000);
             var end_date = new Date(element.ends_timestamp * 1000);
-            // Check date of show so we know where to assign it to
-            var format_start_date = start_date.getFullYear() + "-" + (start_date.getMonth() + 1) + "-" + start_date.getDate();
+            // Bucket key must match PHP WidgetHelper::getWeekInfoV2() weekDays keys (UTC calendar date)
+            var format_start_date = utcYmdKeyFromTs(element.starts_timestamp);
             // Assign show to correct location
             if (importSchedule["weekDays"][format_start_date] !== undefined) {
                 importSchedule["weekDays"][format_start_date]["shows"].push({
-                    "show_start_hour": start_date.toLocaleTimeString([], {
-                        hour: 'numeric',
-                        minute: 'numeric'
-                    }),
-                    "show_end_hour": end_date.toLocaleTimeString([], {
-                        hour: 'numeric',
-                        minute: 'numeric'
-                    }),
+                    "show_start_hour": formatHourInZone(start_date, stationTimezone),
+                    "show_end_hour": formatHourInZone(end_date, stationTimezone),
                     "name": element.name
                 });
             }

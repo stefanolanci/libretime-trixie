@@ -53,7 +53,11 @@ div.jp-video {
 }
 
 div.jp-audio {
-	width:420px;
+	width: 100%;
+	max-width: 420px;
+	margin-left: auto;
+	margin-right: auto;
+	box-sizing: border-box;
 }
 div.jp-video-270p {
 	width:100%;

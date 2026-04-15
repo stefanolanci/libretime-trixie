@@ -25,14 +25,27 @@ body {
     padding-left: 0px;
     margin: 0px;
     background: rgba(69, 155, 143, 0.8);
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: stretch;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .schedule .tabs li {
-    width: 103px;
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
+    max-width: 120px;
     height: 80px;
-    display: inline-block;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     font-size: 14px;
-    padding: 15px;
+    padding: 8px 4px;
     box-sizing: border-box;
     cursor: pointer;
 }
@@ -123,9 +136,26 @@ body {
     }
 
     .schedule .tabs li {
-        width: 64px;
+        max-width: none;
         height: 64px;
-        padding: 6px;
+        padding: 6px 2px;
+        font-size: 12px;
+    }
+
+    .schedule .tabs li span {
+        font-size: 22px;
+    }
+}
+
+@media (max-width: 420px) {
+    .schedule .tabs {
+        flex-wrap: wrap;
+    }
+
+    .schedule .tabs li {
+        flex: 1 1 calc(33.333% - 4px);
+        min-width: calc(33.333% - 4px);
+        height: 56px;
     }
 }
 

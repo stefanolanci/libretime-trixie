@@ -8,6 +8,7 @@ Mantieni allineato con **`docs/development-log.md`** nel repository.
 
 ## Ultimo stato rilevante (2026-04)
 
+- **Radio page / embed (2026-04-16):** rollback tag `rollback/pre-radio-ux-2026-04-16`; dettagli in `docs/development-log.md`.
 - **PLC dashboard**: header con lampade LNK/FLW/AUD/ICE e FET/PLAY; etichette PLC REAL / PLC LOGIC; colori stato verde/giallo/rosso da codice 6 bit; API `playout-state` alimentata da `pipeline.py` + probe.
 - **Playout**: monitor passivo pipeline (`PipelineMonitor`), `stream_level_probe`, integrazione client Liquidsoap dove modificato.
 - **Live**: Harbor main/show testati su VPS; switch coerenti con API.
