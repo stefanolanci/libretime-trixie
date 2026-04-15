@@ -16,19 +16,12 @@ body {
     height: 120px;
     background: #fff;
     display: flex;
-    flex-direction: row;
-    align-items: stretch;
-    flex-wrap: nowrap;
-    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12);
-    z-index: 1000;
 }
 
 .bottom_bar .cont_btn {
     width: 120px;
     height: 120px;
-    min-width: 72px;
-    min-height: 72px;
-    flex: 0 0 auto;
+    display: inline-block;
     cursor: pointer;
 }
 
@@ -44,66 +37,40 @@ body {
     background: #459B8F url('img/pause.png') no-repeat center center;
 }
 
-/* Grow to use remaining width; min-width:0 lets flex shrink without clipping text to zero */
 .on_air {
-    margin-left: 12px;
-    margin-right: 8px;
-    flex: 1 1 0;
-    min-width: 0;
-    overflow: visible;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-self: stretch;
+    margin-left: 40px;
+    flex-grow: 1;
+    overflow: hidden;
 }
 
 .bottom_bar p.now_playing {
     color: #222222;
-    font-size: clamp(14px, 2.8vw, 26px);
-    font-weight: 400;
-    margin: 8px 0;
+    font-size: 26px;
+    font-weight: 300;
+    float: left;
+    margin: 28px 0px;
     width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-    line-height: 1.35;
-    white-space: normal;
-    word-break: break-word;
-    overflow-wrap: anywhere;
-    hyphens: auto;
-    /* Do not use single-line ellipsis — keep artist + title visible on narrow screens */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .bottom_bar p.now_playing span {
     display: block;
-    font-weight: 300;
+    font-weight: 100;
     width: 100%;
-    max-width: 100%;
-    margin-top: 2px;
-    white-space: normal;
-    word-break: break-word;
-    overflow-wrap: anywhere;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .bottom_bar .button {
     width: 50px;
-    min-width: 44px;
+    min-width: 50px;
     height: 50px;
-    flex: 0 0 auto;
-    margin: 12px 10px;
-    align-self: center;
+    display: inline-block;
+    margin: 35px 40px;
     cursor: pointer;
-    float: none;
-}
-
-/* Spacer is only a DOM hook for tab wiring — must NOT flex-grow or it steals half the bar from now-playing */
-.bottom_bar .flex_spacer {
-    flex: 0 0 0;
-    width: 0;
-    min-width: 0;
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    align-self: stretch;
+    float: right;
 }
 
 .bottom_bar .station_rss_btn {
@@ -117,7 +84,6 @@ body {
 
 .bottom_bar .schedule_btn {
     background: url('img/schedule.png') no-repeat center 0px;
-    margin-left: auto;
 }
 
 .bottom_bar .schedule_btn.current {
@@ -138,68 +104,97 @@ body {
 
 .bottom_bar .login_btn.current {
     background: url('img/login.png') no-repeat center -50px;
-    float: none;
+    float: right;
 }
 
 .bottom_bar .radio_tab_label {
     margin-top: 60px;
 }
 
+@media (max-width: 1230px) {
+    .on_air {
+        width: 50%;
+    }
+}
+
+@media (max-width: 1075px) {
+    .on_air {
+        width: 40%;
+    }
+}
+
+@media (max-width: 960px) {
+    .on_air {
+        width: 35%;
+    }
+}
+
+@media (max-width: 850px) {
+    .on_air {
+        width: 30%;
+    }
+}
+
 @media (max-width: 780px) {
     .bottom_bar {
         height: 80px;
-        flex-wrap: nowrap;
-        align-content: center;
+    }
+
+    .bottom_bar .flex_spacer {
+        flex-grow: 1;
     }
 
     .bottom_bar .play {
         width: 80px;
         height: 80px;
-        min-width: 80px;
-        min-height: 80px;
-        flex: 0 0 80px;
+        float: left;
         background-size: 60%;
     }
 
-    /* Metadata strip above the chrome bar — full width so title/artist never collapse */
-    .on_air {
-        position: fixed;
-        bottom: 80px;
-        left: 0;
-        right: 0;
-        width: 100%;
-        max-width: 100vw;
-        margin: 0;
-        padding: 10px 14px 8px;
-        box-sizing: border-box;
-        z-index: 1001;
-        background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.75) 35%, rgba(0, 0, 0, 0.92) 100%);
-        flex: none;
-        min-height: auto;
-    }
-
     .bottom_bar p.now_playing {
-        font-size: clamp(13px, 3.5vw, 18px);
-        margin: 0;
-        color: #f5f5f5;
-        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
-        max-height: 4.2em;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
+        font-size: 18px;
+        margin: 10px 10px;
+        color: #fff;
+        white-space: nowrap;
     }
 
     .bottom_bar p.now_playing span {
-        color: #ffffff;
-        font-weight: 400;
+        display: inline-block;
+        padding-left: 10px;
+    }
+
+    /*.on_air {
+        margin-left: 20px;
+    }*/
+    .on_air {
+        margin-left: 0px;
+        position: absolute;
+        top: -82px;
+        left: 0px;
+        right: 0px;
+        padding-top: 40px;
+        width: 100%;
+        background: rgba(0,0,0,0);
+        background: -moz-linear-gradient(top, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 69%, rgba(0,0,0,1) 100%);
+        background: -webkit-gradient(left top, left bottom, color-stop(0%, rgba(0,0,0,0)), color-stop(69%, rgba(0,0,0,1)), color-stop(100%, rgba(0,0,0,1)));
+        background: -webkit-linear-gradient(top, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 69%, rgba(0,0,0,1) 100%);
+        background: -o-linear-gradient(top, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 69%, rgba(0,0,0,1) 100%);
+        background: -ms-linear-gradient(top, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 69%, rgba(0,0,0,1) 100%);
+        background: linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 69%, rgba(0,0,0,1) 100%);
+        filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#000000', endColorstr='#000000', GradientType=0 );
     }
 
     .bottom_bar .button {
-        margin: 10px 6px;
+        margin: 15px 20px;
     }
-}
 
-@media (max-width: 380px) {
-    .bottom_bar .button {
-        margin: 10px 4px;
+    .bottom_bar .schedule_btn.current {
+        top: 0px;
+        left: 0px;
+    }
+
+    .bottom_bar .about_us_btn {
+        top: 0px;
+        right: 0px;
     }
 }

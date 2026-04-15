@@ -94,8 +94,5 @@ class EmbedController extends Zend_Controller_Action
         $currentDay = new DateTime('now', new DateTimeZone(Application_Model_Preference::GetTimezone()));
         // day of the month without leading zeros (1 to 31)
         $this->view->currentDayOfMonth = $currentDay->format('j');
-        // IANA zone for widget JS (row labels); same preference chain as getWeekInfoV2() start
-        $tz = Application_Model_Preference::GetTimezone();
-        $this->view->station_timezone = ($tz !== null && $tz !== '') ? $tz : 'UTC';
     }
 }

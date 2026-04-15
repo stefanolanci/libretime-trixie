@@ -13,13 +13,6 @@ body {
     margin: 0px;
 }
 
-.wrapper {
-    position: relative;
-    max-width: 100vw;
-    overflow-x: hidden;
-    box-sizing: border-box;
-    min-height: 100vh;
-}
 
 .bck_cover {
     position: fixed;
@@ -65,16 +58,14 @@ span.login-img {
 #schedule_iframe, .tab_content {
     color: #fff;
     text-align: center;
-    box-sizing: border-box;
-    width: min(770px, calc(100vw - 20px));
-    max-width: calc(100vw - 20px);
-    margin: 0 auto;
+    width: 770px;
+    max-width: 770px;
+    margin: 0 auto 0px -380px;
     padding: 10px;
     padding-left: 0px;
     padding-bottom: 140px !important;
     position: absolute;
     left: 50%;
-    transform: translateX(-50%);
     /*	-webkit-transition-delay: 1s;
         transition-delay: 1s;*/
 }
@@ -241,20 +232,18 @@ input[type="submit"]:hover {
     .tab_content {
         margin-top: 0px;
         width: auto;
-        max-width: none;
-        margin-left: 0;
+        max-width: 100%;
+        margin-left: auto;
         left: 10px;
         right: 10px;
-        transform: none;
     }
 
     #schedule_iframe {
         margin-top: 0px;
-        max-width: none;
-        margin-left: 0;
-        left: 10px;
+        max-width: 100%;
+        margin-left: auto;
+        left: 0px;
         right: 10px;
-        transform: none;
     }
 
     .about_us h1 {
