@@ -48,6 +48,8 @@
         let cleanSchedule = [];
         /** IANA timezone (station default) — row times use this; day buckets use UTC keys like PHP weekDays */
         let stationTimezone = <?php echo json_encode($this->station_timezone); ?>;
+        /** Day of month (1–31) for “today” in station TZ — matches EmbedController */
+        var stationTodayDom = <?php echo (int) $this->currentDayOfMonth; ?>;
 
         function utcYmdKeyFromTs(sec) {
             var d = new Date(sec * 1000);
@@ -102,9 +104,26 @@
 
         // Tabs logic
         $(document).ready(function() {
-            //initialize first day to active
-            $('.tabs').find("li").first().addClass("active");
-            $('.schedule_content').find('.schedule_item').first().addClass("active");
+            var $tabs = $('.tabs li');
+            var $items = $('.schedule_content .schedule_item');
+            var $targetTab = null;
+            var $targetItem = null;
+            $tabs.each(function () {
+                var dom = parseInt($(this).find('span').text(), 10);
+                if (dom === stationTodayDom) {
+                    $targetTab = $(this);
+                    $targetItem = $('#day-' + dom);
+                    return false;
+                }
+            });
+            if (!$targetTab || !$targetItem.length) {
+                $targetTab = $tabs.first();
+                $targetItem = $items.first();
+            }
+            $tabs.removeClass('active');
+            $items.removeClass('active');
+            $targetTab.addClass('active');
+            $targetItem.addClass('active');
 
             $('.tabs li').click(function() {
                 //var tab_id = $(this).attr('data-tab');

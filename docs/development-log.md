@@ -9,6 +9,7 @@ Repository: `https://github.com/stefanolanci/libretime-trixie` — target instal
 
 - **Tag rollback:** `rollback/pre-radio-ux-2026-04-16` (annotated) sul commit precedente alle modifiche UI embed.
 - **`premium_player.css`:** barra in flex; area “now playing” con `min-width:0`, testo a capo (niente `white-space:nowrap` che tagliava titolo/autore); rimosse media query che stringevano `.on_air` al 30–50%; mobile: fascia fissa sopra la barra con testo leggibile.
+- **Correzione post-deploy:** `flex_spacer` non deve avere `flex-grow` (lasciava metà barra bianca); `margin-left:auto` su `.schedule_btn`; tab schedule attivo sul **giorno corrente** stazione (`currentDayOfMonth`), non sempre il primo.
 - **`radio-page.css`:** `.wrapper` anti-overflow orizzontale; tab/iframe centrati con `min()` + `translateX` invece del margine negativo fisso.
 - **`weekly-program.phtml` + `EmbedController`:** viewport embed; fuso stazione per `toLocaleTimeString`; chiave giorno show da **UTC** allineata a `weekDays` PHP.
 - **`weekly-schedule-widget.css` / `station-podcast.css`:** tab flex fluidi; blocco jPlayer podcast `max-width:100%`.
