@@ -3,7 +3,7 @@ Optional background sampling of the published stream loudness via ffmpeg volumed
 
 Enable with environment variables on libretime-playout:
   LIBRETIME_STREAM_PROBE_URL=http://127.0.0.1:8000/main
-  LIBRETIME_STREAM_PROBE_INTERVAL=25   # seconds between samples (optional)
+  LIBRETIME_STREAM_PROBE_INTERVAL=8    # seconds between samples (optional)
 """
 
 from __future__ import annotations
@@ -22,16 +22,17 @@ class StreamLevelProbeThread(threading.Thread):
     name = "stream_level_probe"
 
     last_mean_volume: float | None = None
+    last_link_up: bool | None = None
+    last_flowing: bool | None = None
 
-    def __init__(self, url: str, interval: float = 25.0) -> None:
+    def __init__(self, url: str, interval: float = 8.0) -> None:
         super().__init__()
         self._url = url
         self._interval = max(5.0, interval)
 
     def run(self) -> None:
-        # Skip the very first seconds after playout start (Liquidsoap/Icecast not ready;
-        # ffmpeg would otherwise log a misleading ~−91 dB before the first queue.push).
-        time.sleep(min(30.0, self._interval))
+        # Small startup delay to avoid misleading first probe when chain is still settling.
+        time.sleep(min(10.0, self._interval))
         while True:
             try:
                 self._sample_once()
@@ -47,7 +48,7 @@ class StreamLevelProbeThread(threading.Thread):
             "-loglevel",
             "info",
             "-t",
-            "4",
+            "3",
             "-i",
             self._url,
             "-af",
@@ -60,7 +61,7 @@ class StreamLevelProbeThread(threading.Thread):
             cmd,
             capture_output=True,
             text=True,
-            timeout=35,
+            timeout=20,
             check=False,
         )
         blob = (proc.stderr or "") + (proc.stdout or "")
@@ -73,9 +74,13 @@ class StreamLevelProbeThread(threading.Thread):
                 proc.returncode,
             )
             self.last_mean_volume = None
+            self.last_link_up = proc.returncode == 0
+            self.last_flowing = False
             return
         mean_v = float(mean_m.group(1))
         self.last_mean_volume = mean_v
+        self.last_link_up = True
+        self.last_flowing = True
         if mean_v < -45.0:
             logger.warning(
                 "stream level probe: very low audio mean=%s dB max=%s dB url=%s",

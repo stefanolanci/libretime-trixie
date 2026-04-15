@@ -15,7 +15,10 @@
 /tools/systemd/
 
 # IDE / OS noise (not needed for ./install from a clean clone)
-.cursor/
+.cursor/*
+!.cursor/rules/
+.cursor/rules/*
+!.cursor/rules/development-log.mdc
 .vscode/
 .idea/
 .DS_Store

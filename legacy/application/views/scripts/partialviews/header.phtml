@@ -56,22 +56,20 @@
     <a href="#" class="listen-control-button"><span><?php echo _("Listen") ?></span></a>
   </div>
   <div class="plc-panel" id="plc-panel">
-    <div class="plc-title">PLC</div>
-    <div class="plc-lamps">
-      <div class="plc-lamp-group">
-        <div id="plc-lamp-fetch" class="plc-lamp lamp-off" title="FETCH: waiting"></div>
-        <div class="plc-lamp-label">FET</div>
-      </div>
-      <div class="plc-lamp-group">
-        <div id="plc-lamp-play" class="plc-lamp lamp-off" title="PLAY: waiting"></div>
-        <div class="plc-lamp-label">PLAY</div>
-      </div>
-      <div class="plc-lamp-group">
-        <div id="plc-lamp-ice" class="plc-lamp lamp-off" title="ICE: waiting"></div>
-        <div class="plc-lamp-label">ICE</div>
-      </div>
+    <div class="plc-matrix" aria-label="PLC">
+      <div class="plc-row-title plc-label-real"><?php echo _("PLC REAL") ?></div>
+      <div id="plc-lamp-link" class="plc-lamp lamp-off" title="LINK: waiting">LNK</div>
+      <div id="plc-lamp-flow" class="plc-lamp lamp-off" title="FLOW: waiting">FLW</div>
+      <div id="plc-lamp-aud" class="plc-lamp lamp-off" title="AUDIO: waiting">AUD</div>
+      <div id="plc-lamp-ince" class="plc-lamp lamp-off" title="ICE: waiting">ICE</div>
+      <div class="plc-row-title plc-label-logic"><?php echo _("PLC LOGIC") ?></div>
+      <div id="plc-lamp-fetch" class="plc-lamp lamp-off" title="FETCH: waiting">FET</div>
+      <div id="plc-lamp-play" class="plc-lamp lamp-off" title="PLAY: waiting">PLAY</div>
+      <div class="plc-lamp-spacer plc-lamp-spacer-c4" aria-hidden="true"></div>
+      <div class="plc-lamp-spacer plc-lamp-spacer-c5" aria-hidden="true"></div>
     </div>
-    <div class="plc-step" id="plc-step">--</div>
+    <div class="plc-step" id="plc-step-real">--</div>
+    <div class="plc-step" id="plc-step-logic">--</div>
     <div class="plc-anomaly" id="plc-anomaly"></div>
   </div>
   <div class="time-info-block pull-right">

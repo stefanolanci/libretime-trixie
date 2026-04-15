@@ -1,6 +1,7 @@
 import logging
 import time
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Dict, List, Optional, Set
 
 from ..liquidsoap.client import LiquidsoapClient
@@ -9,6 +10,7 @@ from ..utils import seconds_between
 from .events import ActionEvent, AnyEvent, EventKind, FileEvent, WebStreamEvent
 
 logger = logging.getLogger(__name__)
+_NOW_PLAYING_PATH = Path("/var/lib/libretime/playout/.now_playing_sid")
 
 # Absurd fade values from the API would keep the first track in liq_fade_in for the whole
 # duration (audible as silence with correct metadata). Clamp to a sane cap.
@@ -83,9 +85,9 @@ class TelnetLiquidsoap:
         except OSError as exception:
             logger.exception(exception)
 
-    def queue_remove(self, queue_id: int):
+    def queue_remove(self, queue_id: int, force: bool = False):
         try:
-            self.liq_client.queues_remove(queue_id)
+            self.liq_client.queues_remove(queue_id, force=force)
         except OSError as exception:
             logger.exception(exception)
 
@@ -301,7 +303,14 @@ class Liquidsoap:
         to_be_removed.update(liq_queue_ids - schedule_ids)
         to_be_added.update(schedule_ids - liq_queue_ids)
 
-        full_resync_done = False
+        now_playing_sid: Optional[int] = None
+        try:
+            raw = _NOW_PLAYING_PATH.read_text().strip()
+            if raw:
+                now_playing_sid = int(raw)
+        except (FileNotFoundError, ValueError, OSError):
+            pass
+
         if to_be_removed:
             logger.info("Need to remove items from Liquidsoap: %s", to_be_removed)
             slot_map = {
@@ -313,32 +322,18 @@ class Liquidsoap:
 
             for queue_id, queue_item in self.liq_queue_tracker.items():
                 if queue_item is not None and queue_item.row_id in to_be_removed:
-                    self.stop(queue_id)
-            # Per-queue skips can leave automation output + ICY on the removed track. Do not
-            # source.skip() the composite chain (that can drop Icecast without reconnect).
-            # Instead clear all automation queues and repush every "present" file.
-            logger.info(
-                "Liquidsoap full automation resync after removal (clear all queues, "
-                "repush %d present file(s))",
-                len(scheduled_now_files),
-            )
-            self.clear_queue_tracker()
-            self.telnet_liquidsoap.queue_clear_all()
-            # Guard rail: when a row_id is being removed, never re-push it in the
-            # same resync cycle (prevents audible "remove but same track continues").
-            blocked_repush_ids = set(to_be_removed)
-            for item in sorted(scheduled_now_files, key=lambda x: x.start):
-                if item.row_id in blocked_repush_ids:
-                    logger.info(
-                        "Skipping re-push of removed row_id during resync: %s",
-                        item.row_id,
+                    force_skip = (
+                        now_playing_sid is not None and queue_item.row_id == now_playing_sid
                     )
-                    continue
-                self.modify_cue_point(item)
-                self.play(item)
-            full_resync_done = True
+                    if force_skip:
+                        logger.info(
+                            "Force-cut requested for currently playing row_id=%s on queue s%d",
+                            queue_item.row_id,
+                            queue_id,
+                        )
+                    self.stop(queue_id, force=force_skip)
 
-        if to_be_added and not full_resync_done:
+        if to_be_added:
             logger.info("Need to add items to Liquidsoap *now*: %s", to_be_added)
 
             for item in scheduled_now_files:
@@ -360,8 +355,8 @@ class Liquidsoap:
             self.telnet_liquidsoap.stop_web_stream_buffer()
             self.telnet_liquidsoap.stop_web_stream_output()
 
-    def stop(self, queue_id: int) -> None:
-        self.telnet_liquidsoap.queue_remove(queue_id)
+    def stop(self, queue_id: int, force: bool = False) -> None:
+        self.telnet_liquidsoap.queue_remove(queue_id, force=force)
         self.liq_queue_tracker[queue_id] = None
 
     def clear_queue_tracker(self) -> None:

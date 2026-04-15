@@ -210,6 +210,7 @@ Open whatever clients need:
 
 Targeted fixes for **Debian 13 / Liquidsoap 2.3** and races between UI, API, and playout:
 
+- **PLC dashboard (header):** passive pipeline synoptic with **PLC REAL** / **PLC LOGIC** rows; six lamps (**LNK, FLW, AUD, ICE** for the real chain; **FET, PLAY** for logic) driven by playout telemetry posted to **`/api/playout-state`**; decoded **State / Detail** text from a six-bit code with **green / yellow / red** severity; layout tuned for the master strip height. Implemented in `legacy` (header, CSS, `dashboard.js`) and playout (`player/pipeline.py`, `stream_level_probe.py`, wiring in `main.py` / Liquidsoap client).
 - **Station podcast workflow restored and expanded:** re-enabled **Publish** from Tracks context menu, fixed episode publish persistence (`episode_title` / metadata flow), restored **My Podcast** navigation entry, and fixed empty episode table behavior in the management page.
 - **My Podcast table UX parity:** added proper server-side DataTables behavior, stable column definitions, working **Columns** visibility/reorder controls, and cleaner labels for narrow ColVis dropdowns.
 - **Public radio page background controls:** General Settings now supports upload/remove for a dedicated radio-page background image, persistent `cover` / `contain` fit preference, fallback behavior, and frontend rendering on the public homepage with dark overlay compatibility.
@@ -227,6 +228,8 @@ Targeted fixes for **Debian 13 / Liquidsoap 2.3** and races between UI, API, and
 - **Python modernization:** `datetime.utcnow()` replaced with `datetime.now(timezone.utc)` across the playout package; `UnboundLocalError` risk fixed in analyzer `message_listener.py`.
 - **Install robustness:** `--wizard` validates TTY, blocks upgrade usage, and rejects combined positional URL; flags requiring arguments now fail with a clear message instead of a cryptic `shift` error; first install without a URL or `--wizard` is now blocked.
 - **Version label:** root `VERSION` file (e.g. `0.0.1 trixie`); `tools/version.sh` does **not** overwrite it when it already contains a semver.
+
+A chronological **development log** (Italian) lives in [`docs/development-log.md`](docs/development-log.md). Optional Cursor rule summary: [`.cursor/rules/development-log.mdc`](.cursor/rules/development-log.mdc).
 
 After `git pull` on an installed host, redeploy changed paths (legacy PHP, playout, Liquidsoap) and restart services as usual.
 

@@ -67,7 +67,13 @@ class LiquidsoapClient:
 
         raise LiquidsoapClientError("could not get liquidsoap version")
 
-    def queues_remove(self, *queues: int) -> None:
+    @staticmethod
+    def _request_queue_cmd(queue_id: int, action: str) -> str:
+        if queue_id < 3:
+            return f"request_queue.{queue_id + 1}.{action}"
+        return f"request_queue.{action}"
+
+    def queues_remove(self, *queues: int, force: bool = False) -> None:
         """Skip tracks in the given queues.
 
         In Liquidsoap 2.3, calling skip on an *empty* queue leaves the source
@@ -77,6 +83,14 @@ class LiquidsoapClient:
         """
         with self.conn:
             for queue_id in queues:
+                if force:
+                    logger.info("force skip on queue s%d", queue_id)
+                    # For "remove current track now", ask LS to flush pending prepared
+                    # requests for this queue and skip immediately. This is stronger than
+                    # a plain skip and reduces perceived lag between UI remove and audio.
+                    self.conn.write(self._request_queue_cmd(queue_id, "flush_and_skip"))
+                    self.conn.read()
+                    continue
                 if queue_id < 3:
                     qcmd = f"request_queue.{queue_id + 1}.queue"
                 else:
@@ -84,7 +98,7 @@ class LiquidsoapClient:
                 self.conn.write(qcmd)
                 contents = self.conn.read().strip()
                 if contents:
-                    self.conn.write(f"queues.s{queue_id}_skip")
+                    self.conn.write(self._request_queue_cmd(queue_id, "skip"))
                     self.conn.read()
                 else:
                     logger.debug("queue s%d already empty, skip avoided", queue_id)

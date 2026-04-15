@@ -24,6 +24,7 @@ var scheduled_play_source = false;
 
 var _scheduleVersion = 0;
 var _playoutState = null;
+var _plcStaleAfterMs = 20000;
 var _syncStatus = "unknown"; // "synced", "processing", "diverged", "unknown"
 var _versionMismatchSince = null;
 
@@ -505,55 +506,197 @@ function getScheduleFromServer() {
   });
 }
 
+/** PLC status line + anomaly row: green = nominal, yellow = non-blocking, red = blocking */
+function plcStateLevelFromCode6(code6) {
+  if (code6 === "111111") {
+    return "nominal";
+  }
+  if (
+    code6 === "110011" ||
+    code6 === "111101" ||
+    (code6[0] === "0" && code6[1] === "1") ||
+    (code6[2] === "1" && code6[1] === "0") ||
+    (code6[5] === "1" && code6[4] === "0")
+  ) {
+    return "critical";
+  }
+  return "warn";
+}
+
+function setPlcStateTone(realEl, anomalyEl, level) {
+  realEl.removeClass("plc-state-nominal plc-state-warn plc-state-critical");
+  anomalyEl.removeClass("plc-state-nominal plc-state-warn plc-state-critical");
+  realEl.addClass("plc-state-" + level);
+  var t = anomalyEl.text();
+  if (typeof t === "string" && $.trim(t).length > 0) {
+    anomalyEl.addClass("plc-state-" + level);
+  }
+}
+
 function updatePlcPanel() {
+  function setLamp($el, state, title) {
+    var css = "plc-lamp lamp-off";
+    if (state === "green") css = "plc-lamp lamp-green";
+    else if (state === "red") css = "plc-lamp lamp-red";
+    else if (state === "yellow") css = "plc-lamp lamp-yellow";
+    $el.attr("class", css).attr("title", title);
+  }
+
+  function bit(v) {
+    return v ? "1" : "0";
+  }
+
+  function interpretSixBitState(code6) {
+    var known = {
+      111111: [$.i18n._("Nominal on-air"), $.i18n._("Audio chain and logic aligned")],
+      111110: [$.i18n._("Ready, waiting playout"), $.i18n._("Chain live, schedule active, no current track")],
+      111101: [$.i18n._("Logic mismatch"), $.i18n._("PLAY active without schedule")],
+      111100: [$.i18n._("Real chain OK, logic idle"), $.i18n._("No schedule and no active track")],
+      110011: [$.i18n._("Silent playout fault"), $.i18n._("Playback declared but audio under threshold")],
+      110010: [$.i18n._("Silent chain"), $.i18n._("Flow present but no audible program")],
+      100000: [$.i18n._("Link only"), $.i18n._("Probe reachable, no stream flow")],
+      000000: [$.i18n._("Chain stopped"), $.i18n._("No real or logic activity")],
+    };
+    if (known[code6]) {
+      return known[code6];
+    }
+    if (code6[0] === "0" && code6[1] === "1") {
+      return [$.i18n._("Telemetry inconsistency"), $.i18n._("Flow active while link is down")];
+    }
+    if (code6[2] === "1" && code6[1] === "0") {
+      return [$.i18n._("Telemetry inconsistency"), $.i18n._("Audio detected without flow")];
+    }
+    if (code6[5] === "1" && code6[4] === "0") {
+      return [$.i18n._("Logic anomaly"), $.i18n._("PLAY active while FET is off")];
+    }
+    return [$.i18n._("Mixed transitional state"), $.i18n._("Monitor sequence in progress")];
+  }
+
+  var lampLink = $("#plc-lamp-link");
+  var lampFlow = $("#plc-lamp-flow");
+  var lampAud = $("#plc-lamp-aud");
+  var lampInce = $("#plc-lamp-ince");
   var lampFetch = $("#plc-lamp-fetch");
   var lampPlay = $("#plc-lamp-play");
-  var lampIce = $("#plc-lamp-ice");
-  var stepEl = $("#plc-step");
+  var realStepEl = $("#plc-step-real");
+  var logicStepEl = $("#plc-step-logic");
   var anomalyEl = $("#plc-anomaly");
-  if (!lampFetch.length) return;
+  if (!lampFetch.length || !lampLink.length) return;
 
   if (!_playoutState || !_playoutState.pipeline) {
-    lampFetch.attr("class", "plc-lamp lamp-off").attr("title", $.i18n._("No data"));
-    lampPlay.attr("class", "plc-lamp lamp-off").attr("title", $.i18n._("No data"));
-    lampIce.attr("class", "plc-lamp lamp-off").attr("title", $.i18n._("No data"));
-    stepEl.text("--");
+    setLamp(lampLink, "off", $.i18n._("No data"));
+    setLamp(lampFlow, "off", $.i18n._("No data"));
+    setLamp(lampAud, "off", $.i18n._("No data"));
+    setLamp(lampInce, "off", $.i18n._("No data"));
+    setLamp(lampFetch, "off", $.i18n._("No data"));
+    setLamp(lampPlay, "off", $.i18n._("No data"));
+    realStepEl.text($.i18n._("State: no data"));
+    logicStepEl.text($.i18n._("Detail: waiting first valid sample"));
     anomalyEl.text("");
+    setPlcStateTone(realStepEl, anomalyEl, "warn");
     return;
   }
 
   var p = _playoutState.pipeline;
+  var hasNowPlaying =
+    typeof p.now_playing_sid !== "undefined" &&
+    p.now_playing_sid !== null &&
+    p.now_playing_sid !== "";
+  var updatedAtMs = p.updated_at ? Date.parse(p.updated_at) : NaN;
+  var isStale = !isNaN(updatedAtMs) && Date.now() - updatedAtMs > _plcStaleAfterMs;
+  var linkUp = p.link_up === true;
+  var flowUp = p.flow_up === true;
+  var audUp = p.ice_audio === true;
+  var ingestUp = p.ingest_connected === true;
 
-  // ICE: audio probe > -45 dB
+  if (isStale) {
+    setLamp(lampLink, "off", $.i18n._("Stale data"));
+    setLamp(lampFlow, "off", $.i18n._("Stale data"));
+    setLamp(lampAud, "off", $.i18n._("Stale data"));
+    setLamp(lampInce, "off", $.i18n._("Stale data"));
+    setLamp(lampFetch, "off", $.i18n._("Stale data"));
+    setLamp(lampPlay, "off", $.i18n._("Stale data"));
+    realStepEl.text($.i18n._("State: stale data"));
+    logicStepEl.text($.i18n._("Detail: PLC update delayed"));
+    anomalyEl.text($.i18n._("PLC update delayed"));
+    setPlcStateTone(realStepEl, anomalyEl, "critical");
+    return;
+  }
+
+  // REAL lamps: LNK FLW AUD ICE
+  if (p.link_up === true) {
+    setLamp(lampLink, "green", $.i18n._("Probe link OK"));
+  } else if (p.link_up === false) {
+    setLamp(lampLink, "red", $.i18n._("Probe link DOWN"));
+  } else {
+    setLamp(lampLink, "off", $.i18n._("Probe unavailable"));
+  }
+
+  if (p.flow_up === true) {
+    setLamp(lampFlow, "green", $.i18n._("Stream flow detected"));
+  } else if (p.flow_up === false) {
+    setLamp(lampFlow, "red", $.i18n._("No stream flow"));
+  } else {
+    setLamp(lampFlow, "off", $.i18n._("Flow unknown"));
+  }
+
   if (p.ice_audio === true) {
-    lampIce.attr("class", "plc-lamp lamp-green").attr("title", $.i18n._("Audio on air"));
+    setLamp(lampAud, "green", $.i18n._("Audio on air"));
   } else if (p.ice_audio === false) {
-    lampIce.attr("class", "plc-lamp lamp-red").attr("title", $.i18n._("Stream silent!"));
+    setLamp(lampAud, "red", $.i18n._("Audio below threshold"));
   } else {
-    lampIce.attr("class", "plc-lamp lamp-off").attr("title", $.i18n._("Waiting for probe"));
+    setLamp(lampAud, "off", $.i18n._("Waiting for probe"));
   }
 
-  // FET: schedule received
+  if (p.ingest_connected === true) {
+    setLamp(lampInce, "green", $.i18n._("Icecast connection active"));
+  } else if (p.ingest_connected === false) {
+    setLamp(lampInce, "red", $.i18n._("Icecast connection missing"));
+  } else {
+    setLamp(lampInce, "off", $.i18n._("Icecast connection unknown"));
+  }
+
+  // LOGIC lamps: FET PLAY
   if (p.has_schedule) {
-    lampFetch.attr("class", "plc-lamp lamp-green").attr("title", $.i18n._("Schedule active"));
+    setLamp(lampFetch, "green", $.i18n._("Schedule active"));
   } else {
-    lampFetch.attr("class", "plc-lamp lamp-off").attr("title", $.i18n._("No schedule"));
+    setLamp(lampFetch, "off", $.i18n._("No schedule"));
   }
 
-  // PLAY: Liquidsoap notify signal (real playback)
-  if (p.now_playing_sid) {
-    lampPlay.attr("class", "plc-lamp lamp-green")
-      .attr("title", $.i18n._("Playing") + " (sid " + p.now_playing_sid + ")");
-    stepEl.text($.i18n._("Playing") + " #" + p.now_playing_sid);
+  if (hasNowPlaying) {
+    setLamp(lampPlay, "green", $.i18n._("Playing") + " (sid " + p.now_playing_sid + ")");
   } else if (p.has_schedule) {
-    lampPlay.attr("class", "plc-lamp lamp-off").attr("title", $.i18n._("Idle"));
-    stepEl.text($.i18n._("Idle"));
+    setLamp(lampPlay, "off", $.i18n._("Idle"));
   } else {
-    lampPlay.attr("class", "plc-lamp lamp-off").attr("title", $.i18n._("No data"));
-    stepEl.text("--");
+    setLamp(lampPlay, "off", $.i18n._("No schedule"));
   }
 
-  anomalyEl.text("");
+  var code6 =
+    bit(linkUp) +
+    bit(flowUp) +
+    bit(audUp) +
+    bit(ingestUp) +
+    bit(p.has_schedule) +
+    bit(hasNowPlaying);
+  var interpreted = interpretSixBitState(code6);
+  realStepEl.text($.i18n._("State: ") + interpreted[0]);
+  logicStepEl.text($.i18n._("Detail: ") + interpreted[1] + " [" + code6 + "]");
+
+  var anomalies = [];
+  if (hasNowPlaying && p.ice_audio === false) {
+    anomalies.push($.i18n._("PLAY=1 but AUD=0"));
+  }
+  if (flowUp && !linkUp) {
+    anomalies.push($.i18n._("FLW=1 but LNK=0"));
+  }
+  if (audUp && !flowUp) {
+    anomalies.push($.i18n._("AUD=1 but FLW=0"));
+  }
+  if (hasNowPlaying && !p.has_schedule) {
+    anomalies.push($.i18n._("PLAY=1 with FET=0"));
+  }
+  anomalyEl.text(anomalies.join(" | "));
+  setPlcStateTone(realStepEl, anomalyEl, plcStateLevelFromCode6(code6));
 }
 
 function setupQtip() {

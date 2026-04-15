@@ -141,7 +141,7 @@ def cli(
     if probe_url:
         from .player.stream_level_probe import StreamLevelProbeThread
 
-        probe_interval = float(os.environ.get("LIBRETIME_STREAM_PROBE_INTERVAL", "25"))
+        probe_interval = float(os.environ.get("LIBRETIME_STREAM_PROBE_INTERVAL", "8"))
         probe_thread = StreamLevelProbeThread(probe_url, probe_interval)
         probe_thread.start()
         logger.info(
@@ -151,11 +151,20 @@ def cli(
         )
 
     # --- Pipeline monitor (own thread, reads probe + LS file + fetch flag) ---
+    icecast_status_url = os.environ.get(
+        "LIBRETIME_ICECAST_STATUS_URL",
+        "http://127.0.0.1:8000/status-json.xsl",
+    )
+    icecast_mount = os.environ.get("LIBRETIME_ICECAST_MOUNT", "main")
     plm = PipelineMonitor(
         legacy_client,
         probe_volume_getter=(
             (lambda: probe_thread.last_mean_volume) if probe_thread else None
         ),
+        probe_link_getter=((lambda: probe_thread.last_link_up) if probe_thread else None),
+        probe_flow_getter=((lambda: probe_thread.last_flowing) if probe_thread else None),
+        icecast_status_url=icecast_status_url,
+        icecast_mount=icecast_mount,
     )
     plm.start()
     logger.info("PipelineMonitor started (passive, own thread)")
