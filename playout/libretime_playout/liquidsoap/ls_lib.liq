@@ -6,6 +6,7 @@ end
 
 def notify(m)
   gateway("media '#{m['schedule_table_id']}'")
+  file.write(data="#{m['schedule_table_id']}", "/var/lib/libretime/playout/.now_playing_sid")
 end
 
 def notify_queue(m)

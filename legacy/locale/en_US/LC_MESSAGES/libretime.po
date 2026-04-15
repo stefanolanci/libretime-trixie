@@ -4055,6 +4055,94 @@ msgstr ""
 msgid "Webstreams"
 msgstr ""
 
+#: application/controllers/LocaleController.php — PLC panel
+msgid "No data"
+msgstr "No data"
+
+msgid "No active track"
+msgstr "No active track"
+
+msgid "Idle"
+msgstr "Idle"
+
+msgid "File cached and ready"
+msgstr "File cached and ready"
+
+msgid "Downloading file..."
+msgstr "Downloading file..."
+
+msgid "Fetch error!"
+msgstr "Fetch error!"
+
+msgid "Waiting for schedule"
+msgstr "Waiting for schedule"
+
+msgid "Playing"
+msgstr "Playing"
+
+msgid "Queued, waiting to play..."
+msgstr "Queued, waiting to play..."
+
+msgid "Playback error!"
+msgstr "Playback error!"
+
+msgid "Sending to player..."
+msgstr "Sending to player..."
+
+msgid "Not yet sent"
+msgstr "Not yet sent"
+
+msgid "Audio on air"
+msgstr "Audio on air"
+
+msgid "Stream silent!"
+msgstr "Stream silent!"
+
+msgid "Waiting for audio confirmation..."
+msgstr "Waiting for audio confirmation..."
+
+msgid "Waiting for playback"
+msgstr "Waiting for playback"
+
+msgid "On air"
+msgstr "On air"
+
+msgid "Queued in LS"
+msgstr "Queued in LS"
+
+msgid "Ready"
+msgstr "Ready"
+
+msgid "File OK"
+msgstr "File OK"
+
+msgid "Received"
+msgstr "Received"
+
+msgid "Waiting"
+msgstr "Waiting"
+
+msgid "Schedule not received"
+msgstr "Schedule not received"
+
+msgid "File not ready"
+msgstr "File not ready"
+
+msgid "Send stalled"
+msgstr "Send stalled"
+
+msgid "Player not responding"
+msgstr "Player not responding"
+
+msgid "Removed but still playing"
+msgstr "Removed but still playing"
+
+msgid "Stream silent"
+msgstr "Stream silent"
+
+msgid "Late start"
+msgstr "Late start"
+
 #~ msgid " to "
 #~ msgstr " to "
 

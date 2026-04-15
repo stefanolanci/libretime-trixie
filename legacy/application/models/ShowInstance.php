@@ -166,14 +166,14 @@ SQL;
     {
         $this->_showInstance->setDbStarts($start)
             ->save();
-        Application_Model_RabbitMq::PushSchedule();
+        Application_Model_RabbitMq::PushSchedule('set_show_start');
     }
 
     public function setShowEnd($end)
     {
         $this->_showInstance->setDbEnds($end)
             ->save();
-        Application_Model_RabbitMq::PushSchedule();
+        Application_Model_RabbitMq::PushSchedule('set_show_end');
     }
 
     public function setAutoPlaylistBuilt($bool)
@@ -309,7 +309,7 @@ SQL;
         CcScheduleQuery::create()
             ->filterByDbInstanceId($this->_instanceId)
             ->delete();
-        Application_Model_RabbitMq::PushSchedule();
+        Application_Model_RabbitMq::PushSchedule('clear_show');
         $this->updateScheduledTime();
     }
 
@@ -437,7 +437,7 @@ SQL;
         }
 
         if ($rabbitmqPush) {
-            Application_Model_RabbitMq::PushSchedule();
+            Application_Model_RabbitMq::PushSchedule('delete_show_instance');
         }
     }
 

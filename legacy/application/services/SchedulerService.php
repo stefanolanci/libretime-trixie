@@ -470,7 +470,7 @@ class Application_Service_SchedulerService
             $updateCriteria->add(CcFilesPeer::IS_SCHEDULED, false);
             BasePeer::doUpdate($selectCriteria, $updateCriteria, Propel::getConnection());
 
-            Application_Model_RabbitMq::PushSchedule();
+            Application_Model_RabbitMq::PushSchedule('empty_show_content');
             $con = Propel::getConnection(CcShowInstancesPeer::DATABASE_NAME);
             foreach ($instances as $instance) {
                 $instance->updateDbTimeFilled($con);

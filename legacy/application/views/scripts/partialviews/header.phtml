@@ -55,6 +55,25 @@
     <div class="on-air-info off" id="on-air-info"><?php echo _("ON AIR") ?></div>
     <a href="#" class="listen-control-button"><span><?php echo _("Listen") ?></span></a>
   </div>
+  <div class="plc-panel" id="plc-panel">
+    <div class="plc-title">PLC</div>
+    <div class="plc-lamps">
+      <div class="plc-lamp-group">
+        <div id="plc-lamp-fetch" class="plc-lamp lamp-off" title="FETCH: waiting"></div>
+        <div class="plc-lamp-label">FET</div>
+      </div>
+      <div class="plc-lamp-group">
+        <div id="plc-lamp-play" class="plc-lamp lamp-off" title="PLAY: waiting"></div>
+        <div class="plc-lamp-label">PLAY</div>
+      </div>
+      <div class="plc-lamp-group">
+        <div id="plc-lamp-ice" class="plc-lamp lamp-off" title="ICE: waiting"></div>
+        <div class="plc-lamp-label">ICE</div>
+      </div>
+    </div>
+    <div class="plc-step" id="plc-step">--</div>
+    <div class="plc-anomaly" id="plc-anomaly"></div>
+  </div>
   <div class="time-info-block pull-right">
     <div class="time" id="time"></div>
     <div class="personal-block">

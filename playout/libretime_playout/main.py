@@ -29,6 +29,7 @@ from .player.events import Events, FileEvents
 from .player.fetch import PypoFetch
 from .player.file import PypoFile
 from .player.liquidsoap import Liquidsoap
+from .player.pipeline import PipelineMonitor
 from .player.push import PypoPush
 
 logger = logging.getLogger(__name__)
@@ -134,6 +135,31 @@ def cli(
 
     liquidsoap = Liquidsoap(LiquidsoapClient(**liq_client_kwargs))
 
+    # --- Stream level probe (own thread, reads Icecast audio level) ---
+    probe_thread = None
+    probe_url = os.environ.get("LIBRETIME_STREAM_PROBE_URL")
+    if probe_url:
+        from .player.stream_level_probe import StreamLevelProbeThread
+
+        probe_interval = float(os.environ.get("LIBRETIME_STREAM_PROBE_INTERVAL", "25"))
+        probe_thread = StreamLevelProbeThread(probe_url, probe_interval)
+        probe_thread.start()
+        logger.info(
+            "stream level probe enabled (url=%s interval=%ss)",
+            probe_url,
+            probe_interval,
+        )
+
+    # --- Pipeline monitor (own thread, reads probe + LS file + fetch flag) ---
+    plm = PipelineMonitor(
+        legacy_client,
+        probe_volume_getter=(
+            (lambda: probe_thread.last_mean_volume) if probe_thread else None
+        ),
+    )
+    plm.start()
+    logger.info("PipelineMonitor started (passive, own thread)")
+
     PypoFile(file_queue, api_client).start()
 
     fetch_thread = PypoFetch(
@@ -145,6 +171,7 @@ def cli(
         config,
         api_client,
         legacy_client,
+        pipeline_monitor=plm,
     )
 
     def _activate_schedule():
@@ -160,18 +187,6 @@ def cli(
         post_present_media_sync=_activate_schedule,
     ).start()
     fetch_thread.start()
-
-    probe_url = os.environ.get("LIBRETIME_STREAM_PROBE_URL")
-    if probe_url:
-        from .player.stream_level_probe import StreamLevelProbeThread
-
-        probe_interval = float(os.environ.get("LIBRETIME_STREAM_PROBE_INTERVAL", "25"))
-        StreamLevelProbeThread(probe_url, probe_interval).start()
-        logger.info(
-            "stream level probe enabled (url=%s interval=%ss)",
-            probe_url,
-            probe_interval,
-        )
 
     StatsCollectorThread(config, legacy_client).start()
 

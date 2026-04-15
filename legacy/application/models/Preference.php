@@ -1677,4 +1677,34 @@ SQL;
         $stream_id = trim($stream_id, 's');
         self::setValue("stream_stats_status:{$stream_id}", $value);
     }
+
+    // --- Playout Signal System (closed-loop feedback) ---
+
+    public static function GetScheduleVersion()
+    {
+        $v = self::getValue('schedule_version');
+        return ($v === '' || $v === false) ? 0 : (int) $v;
+    }
+
+    public static function IncrementScheduleVersion()
+    {
+        $v = self::GetScheduleVersion() + 1;
+        self::setValue('schedule_version', $v);
+        return $v;
+    }
+
+    public static function GetPlayoutState()
+    {
+        $raw = self::getValue('playout_state');
+        if (empty($raw)) {
+            return null;
+        }
+        $decoded = json_decode($raw, true);
+        return is_array($decoded) ? $decoded : null;
+    }
+
+    public static function SetPlayoutState($stateArray)
+    {
+        self::setValue('playout_state', json_encode($stateArray, JSON_UNESCAPED_UNICODE));
+    }
 }

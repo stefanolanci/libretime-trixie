@@ -4081,6 +4081,94 @@ msgstr "Playlist intelligente géré automatiquement pour le podcast"
 msgid "Webstreams"
 msgstr "Flux web"
 
+#: application/controllers/LocaleController.php — PLC panel
+msgid "No data"
+msgstr "Aucune donnée"
+
+msgid "No active track"
+msgstr "Aucune piste active"
+
+msgid "Idle"
+msgstr "Inactif"
+
+msgid "File cached and ready"
+msgstr "Fichier en cache et prêt"
+
+msgid "Downloading file..."
+msgstr "Téléchargement du fichier..."
+
+msgid "Fetch error!"
+msgstr "Erreur de téléchargement !"
+
+msgid "Waiting for schedule"
+msgstr "En attente de la grille"
+
+msgid "Playing"
+msgstr "En lecture"
+
+msgid "Queued, waiting to play..."
+msgstr "En file d'attente, en attente de lecture..."
+
+msgid "Playback error!"
+msgstr "Erreur de lecture !"
+
+msgid "Sending to player..."
+msgstr "Envoi au lecteur..."
+
+msgid "Not yet sent"
+msgstr "Pas encore envoyé"
+
+msgid "Audio on air"
+msgstr "Audio à l'antenne"
+
+msgid "Stream silent!"
+msgstr "Flux muet !"
+
+msgid "Waiting for audio confirmation..."
+msgstr "En attente de confirmation audio..."
+
+msgid "Waiting for playback"
+msgstr "En attente de lecture"
+
+msgid "On air"
+msgstr "À l'antenne"
+
+msgid "Queued in LS"
+msgstr "En file LS"
+
+msgid "Ready"
+msgstr "Prêt"
+
+msgid "File OK"
+msgstr "Fichier OK"
+
+msgid "Received"
+msgstr "Reçu"
+
+msgid "Waiting"
+msgstr "En attente"
+
+msgid "Schedule not received"
+msgstr "Grille non reçue"
+
+msgid "File not ready"
+msgstr "Fichier pas prêt"
+
+msgid "Send stalled"
+msgstr "Envoi bloqué"
+
+msgid "Player not responding"
+msgstr "Lecteur ne répond pas"
+
+msgid "Removed but still playing"
+msgstr "Supprimé mais en lecture"
+
+msgid "Stream silent"
+msgstr "Flux muet"
+
+msgid "Late start"
+msgstr "Démarrage en retard"
+
 #~ msgid " to "
 #~ msgstr " à "
 

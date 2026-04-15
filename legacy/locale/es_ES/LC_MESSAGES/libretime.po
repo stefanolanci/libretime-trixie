@@ -4080,6 +4080,94 @@ msgstr "Bloque inteligente autogenerado para el podcast"
 msgid "Webstreams"
 msgstr "Retransmisiones por Internet"
 
+#: application/controllers/LocaleController.php — PLC panel
+msgid "No data"
+msgstr "Sin datos"
+
+msgid "No active track"
+msgstr "Ninguna pista activa"
+
+msgid "Idle"
+msgstr "Inactivo"
+
+msgid "File cached and ready"
+msgstr "Archivo en caché y listo"
+
+msgid "Downloading file..."
+msgstr "Descargando archivo..."
+
+msgid "Fetch error!"
+msgstr "¡Error de descarga!"
+
+msgid "Waiting for schedule"
+msgstr "Esperando la programación"
+
+msgid "Playing"
+msgstr "Reproduciendo"
+
+msgid "Queued, waiting to play..."
+msgstr "En cola, esperando reproducción..."
+
+msgid "Playback error!"
+msgstr "¡Error de reproducción!"
+
+msgid "Sending to player..."
+msgstr "Enviando al reproductor..."
+
+msgid "Not yet sent"
+msgstr "Aún no enviado"
+
+msgid "Audio on air"
+msgstr "Audio al aire"
+
+msgid "Stream silent!"
+msgstr "¡Transmisión muda!"
+
+msgid "Waiting for audio confirmation..."
+msgstr "Esperando confirmación de audio..."
+
+msgid "Waiting for playback"
+msgstr "Esperando reproducción"
+
+msgid "On air"
+msgstr "Al aire"
+
+msgid "Queued in LS"
+msgstr "En cola LS"
+
+msgid "Ready"
+msgstr "Listo"
+
+msgid "File OK"
+msgstr "Archivo OK"
+
+msgid "Received"
+msgstr "Recibido"
+
+msgid "Waiting"
+msgstr "Esperando"
+
+msgid "Schedule not received"
+msgstr "Programación no recibida"
+
+msgid "File not ready"
+msgstr "Archivo no listo"
+
+msgid "Send stalled"
+msgstr "Envío bloqueado"
+
+msgid "Player not responding"
+msgstr "Reproductor no responde"
+
+msgid "Removed but still playing"
+msgstr "Eliminado pero aún reproduciendo"
+
+msgid "Stream silent"
+msgstr "Transmisión muda"
+
+msgid "Late start"
+msgstr "Inicio tardío"
+
 #~ msgid " to "
 #~ msgstr " para "
 

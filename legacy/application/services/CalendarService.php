@@ -396,7 +396,7 @@ class Application_Service_CalendarService
             );
 
             $con->commit();
-            Application_Model_RabbitMq::PushSchedule();
+            Application_Model_RabbitMq::PushSchedule('move_show');
         } catch (Exception $e) {
             $con->rollback();
 
@@ -412,7 +412,7 @@ class Application_Service_CalendarService
             $con->beginTransaction();
 
             $con->commit();
-            Application_Model_RabbitMq::PushSchedule();
+            Application_Model_RabbitMq::PushSchedule('resize_show');
         } catch (Exception $e) {
             return $e->getMessage();
         }

@@ -324,7 +324,16 @@ class Liquidsoap:
             )
             self.clear_queue_tracker()
             self.telnet_liquidsoap.queue_clear_all()
+            # Guard rail: when a row_id is being removed, never re-push it in the
+            # same resync cycle (prevents audible "remove but same track continues").
+            blocked_repush_ids = set(to_be_removed)
             for item in sorted(scheduled_now_files, key=lambda x: x.start):
+                if item.row_id in blocked_repush_ids:
+                    logger.info(
+                        "Skipping re-push of removed row_id during resync: %s",
+                        item.row_id,
+                    )
+                    continue
                 self.modify_cue_point(item)
                 self.play(item)
             full_resync_done = True

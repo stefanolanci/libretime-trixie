@@ -1159,7 +1159,7 @@ msgstr "E' sicuro di voler eliminare la/e voce/i selezionata/e?"
 
 #: application/controllers/LocaleController.php:85
 msgid "Scheduled"
-msgstr ""
+msgstr "Schedulato"
 
 #: application/controllers/LocaleController.php:86
 #: application/views/scripts/partialviews/dashboard-sub-nav.php:3
@@ -4057,6 +4057,94 @@ msgstr ""
 #: application/views/scripts/partialviews/dashboard-sub-nav.php:18
 msgid "Webstreams"
 msgstr ""
+
+#: application/controllers/LocaleController.php — PLC panel
+msgid "No data"
+msgstr "Nessun dato"
+
+msgid "No active track"
+msgstr "Nessun brano attivo"
+
+msgid "Idle"
+msgstr "Inattivo"
+
+msgid "File cached and ready"
+msgstr "File pronto in cache"
+
+msgid "Downloading file..."
+msgstr "Scaricamento file..."
+
+msgid "Fetch error!"
+msgstr "Errore scaricamento!"
+
+msgid "Waiting for schedule"
+msgstr "In attesa della scaletta"
+
+msgid "Playing"
+msgstr "In riproduzione"
+
+msgid "Queued, waiting to play..."
+msgstr "In coda, attesa riproduzione..."
+
+msgid "Playback error!"
+msgstr "Errore riproduzione!"
+
+msgid "Sending to player..."
+msgstr "Invio al player..."
+
+msgid "Not yet sent"
+msgstr "Non ancora inviato"
+
+msgid "Audio on air"
+msgstr "Audio in onda"
+
+msgid "Stream silent!"
+msgstr "Stream muto!"
+
+msgid "Waiting for audio confirmation..."
+msgstr "In attesa conferma audio..."
+
+msgid "Waiting for playback"
+msgstr "In attesa riproduzione"
+
+msgid "On air"
+msgstr "In onda"
+
+msgid "Queued in LS"
+msgstr "In coda LS"
+
+msgid "Ready"
+msgstr "Pronto"
+
+msgid "File OK"
+msgstr "File OK"
+
+msgid "Received"
+msgstr "Ricevuto"
+
+msgid "Waiting"
+msgstr "Attesa"
+
+msgid "Schedule not received"
+msgstr "Scaletta non ricevuta"
+
+msgid "File not ready"
+msgstr "File non pronto"
+
+msgid "Send stalled"
+msgstr "Invio bloccato"
+
+msgid "Player not responding"
+msgstr "Player non risponde"
+
+msgid "Removed but still playing"
+msgstr "Rimosso ma in riproduzione"
+
+msgid "Stream silent"
+msgstr "Stream muto"
+
+msgid "Late start"
+msgstr "Partenza in ritardo"
 
 #~ msgid " to "
 #~ msgstr "a"

@@ -29,6 +29,7 @@ class ApiController extends Zend_Controller_Action
             'track',
             'track-types',
             'stream-m3u',
+            'playout-state',
         ];
 
         if (Zend_Session::isStarted()) {
@@ -1128,7 +1129,7 @@ class ApiController extends Zend_Controller_Action
         Logging::info('Notifying RabbitMQ to send message to pypo');
 
         Application_Model_RabbitMq::SendMessageToPypo('reset_liquidsoap_bootstrap', []);
-        Application_Model_RabbitMq::PushSchedule();
+        Application_Model_RabbitMq::PushSchedule('dev_manual_push');
     }
 
     public function getBootstrapInfoAction()
@@ -1644,6 +1645,51 @@ class ApiController extends Zend_Controller_Action
 
         // enable cors access from configured URLs
         CORSHelper::enableCrossOriginRequests($request, $response);
+    }
+
+    /**
+     * Playout state register -- closed-loop feedback between playout and UI.
+     *
+     * GET  /api/playout-state  (public, no auth) → read current state
+     * POST /api/playout-state  (api_key auth)     → playout writes verified state
+     */
+    public function playoutStateAction()
+    {
+        $this->view->layout()->disableLayout();
+        $this->_helper->viewRenderer->setNoRender(true);
+
+        $request = $this->getRequest();
+
+        if ($request->isPost()) {
+            $this->checkAuth();
+
+            $raw = $request->getRawBody();
+            $state = json_decode($raw, true);
+            if (!is_array($state)) {
+                $this->jsonError(400, 'Invalid JSON body');
+                return;
+            }
+            $state['server_received_at'] = gmdate('Y-m-d\TH:i:s\Z');
+            Application_Model_Preference::SetPlayoutState($state);
+
+            $this->getResponse()
+                ->setHttpResponseCode(200)
+                ->setHeader('Content-Type', 'application/json')
+                ->setBody(json_encode(['status' => 'ok']));
+        } else {
+            $state = Application_Model_Preference::GetPlayoutState();
+            $version = Application_Model_Preference::GetScheduleVersion();
+
+            $result = [
+                'schedule_version' => $version,
+                'playout_state'    => $state,
+            ];
+
+            $this->getResponse()
+                ->setHttpResponseCode(200)
+                ->setHeader('Content-Type', 'application/json')
+                ->setBody(json_encode($result));
+        }
     }
 
     /**

@@ -312,19 +312,21 @@ img.artwork
 }
 
 .now-playing-block {
-    -webkit-flex: 1 0;
-    -moz-flex: 1 0;
-    -ms-flex: 1 0;
-    -o-flex: 1 0;
-    flex: 1 0;
+    -webkit-flex: 1 0 0%;
+    -moz-flex: 1 0 0%;
+    -ms-flex: 1 0 0%;
+    -o-flex: 1 0 0%;
+    flex: 1 0 0%;
     margin-left: 0;
+    min-width: 0;
 }
 .show-block {
-    -webkit-flex: 1 0;
-    -moz-flex: 1 0;
-    -ms-flex: 1 0;
-    -o-flex: 1 0;
-    flex: 1 0;
+    -webkit-flex: 0.7 0 0%;
+    -moz-flex: 0.7 0 0%;
+    -ms-flex: 0.7 0 0%;
+    -o-flex: 0.7 0 0%;
+    flex: 0.7 0 0%;
+    min-width: 0;
 }
 .text-row {
     height:30px;
@@ -4483,3 +4485,104 @@ body.droppable .artwork-upload .artwork-preview {
 }
 
 /* Track Edit - Cue and Gain editor GUI ends here */
+
+/* --- PLC Synoptic Panel (pipeline controller feedback) --- */
+
+.plc-panel {
+    height: 100px;
+    float: left;
+    width: 170px;
+    text-align: center;
+    padding: 0 8px;
+    background: url(images/masterpanel_spacer.png) no-repeat right 0;
+}
+
+.plc-panel .plc-title {
+    font-size: 11px;
+    font-weight: bold;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-top: 8px;
+    margin-bottom: 5px;
+}
+
+.plc-lamps {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+}
+
+.plc-lamp-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.plc-lamp {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.15);
+    cursor: help;
+    transition: background-color 0.4s, box-shadow 0.4s;
+}
+
+.plc-lamp-label {
+    font-size: 10px;
+    font-weight: bold;
+    color: #999;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+    text-transform: uppercase;
+}
+
+.lamp-off {
+    background-color: #555;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.4);
+}
+
+.lamp-green {
+    background-color: darkgreen;
+    box-shadow: 0 0 8px rgba(0,100,0,0.8), inset 0 -2px 4px rgba(0,0,0,0.2);
+}
+
+.lamp-yellow {
+    background-color: lightyellow;
+    box-shadow: 0 0 8px rgba(255,255,224,0.8), inset 0 -2px 4px rgba(0,0,0,0.1);
+    animation: plc-pulse 1.2s ease-in-out infinite;
+}
+
+.lamp-red {
+    background-color: red;
+    box-shadow: 0 0 10px rgba(255,0,0,0.9), inset 0 -2px 4px rgba(0,0,0,0.2);
+}
+
+.plc-step {
+    font-size: 11px;
+    color: #ccc;
+    margin-top: 4px;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 170px;
+    font-family: "Consolas", "Monaco", monospace;
+}
+
+.plc-anomaly {
+    font-size: 10px;
+    color: #ff4136;
+    margin-top: 2px;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 170px;
+    min-height: 12px;
+}
+
+@keyframes plc-pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.35; }
+}

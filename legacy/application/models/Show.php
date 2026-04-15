@@ -20,7 +20,7 @@ class Application_Model_Show
     {
         $show = CcShowQuery::create()->findPK($this->_showId);
         $show->setDbName($name);
-        Application_Model_RabbitMq::PushSchedule();
+        Application_Model_RabbitMq::PushSchedule('set_show_name');
     }
 
     public function setAirtimeAuthFlag($flag)
@@ -461,7 +461,7 @@ SQL;
             Logging::info($e->getMessage());
         }
 
-        Application_Model_RabbitMq::PushSchedule();
+        Application_Model_RabbitMq::PushSchedule('resize_show');
     }
 
     public function cancelShow($day_timestamp)
@@ -492,7 +492,7 @@ SQL;
             }
         }
 
-        Application_Model_RabbitMq::PushSchedule();
+        Application_Model_RabbitMq::PushSchedule('cancel_show');
     }
 
     /**

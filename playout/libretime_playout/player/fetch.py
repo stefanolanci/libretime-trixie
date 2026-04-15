@@ -41,10 +41,12 @@ class PypoFetch(Thread):
         config: Config,
         api_client: ApiClient,
         legacy_client: LegacyClient,
+        pipeline_monitor=None,
     ):
         Thread.__init__(self)
 
         self.api_client = api_client
+        self._plm = pipeline_monitor
         self.legacy_client = legacy_client
         self.fetch_queue = fetch_queue
         self.push_queue = push_queue
@@ -112,6 +114,8 @@ class PypoFetch(Thread):
 
             if command == "update_schedule":
                 self.schedule_data = get_schedule(self.api_client)
+                if self._plm is not None:
+                    self._plm.has_schedule = bool(self.schedule_data)
                 self.process_schedule(self.schedule_data)
             elif command == "reset_liquidsoap_bootstrap":
                 self.set_bootstrap_variables()
@@ -337,6 +341,8 @@ class PypoFetch(Thread):
         try:
             self.schedule_data = get_schedule(self.api_client)
             logger.debug("Received event from API client: %s", self.schedule_data)
+            if self._plm is not None:
+                self._plm.has_schedule = bool(self.schedule_data)
             self.process_schedule(self.schedule_data)
             return True
         except Exception as exception:  # pylint: disable=broad-exception-caught

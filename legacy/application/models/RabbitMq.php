@@ -6,13 +6,24 @@ use PhpAmqpLib\Message\AMQPMessage;
 class Application_Model_RabbitMq
 {
     public static $doPush = false;
+    public static $pushAction = 'generic';
+    public static $pushAffectedIds = [];
 
     /**
      * Sets a flag to push the schedule at the end of the request.
+     *
+     * @param string $action         Short label for what changed (e.g. 'remove_item', 'add_item',
+     *                               'cancel_show', 'clear_show', 'move_show', 'resize_show',
+     *                               'move_item', 'edit_show'). Defaults to 'generic'.
+     * @param array  $affectedIds    Optional schedule row IDs affected by this change.
      */
-    public static function PushSchedule()
+    public static function PushSchedule($action = 'generic', $affectedIds = [])
     {
         self::$doPush = true;
+        self::$pushAction = $action;
+        if (!empty($affectedIds)) {
+            self::$pushAffectedIds = array_merge(self::$pushAffectedIds, $affectedIds);
+        }
     }
 
     private static function sendMessage($exchange, $exchangeType, $autoDeleteExchange, $data, $queue = '')

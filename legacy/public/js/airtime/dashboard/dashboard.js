@@ -22,6 +22,11 @@ var live_dj_on_air = false;
 var scheduled_play_on_air = false;
 var scheduled_play_source = false;
 
+var _scheduleVersion = 0;
+var _playoutState = null;
+var _syncStatus = "unknown"; // "synced", "processing", "diverged", "unknown"
+var _versionMismatchSince = null;
+
 //a reference returned by setTimeout. Useful for when we want clearTimeout()
 var newSongTimeoutId = null;
 
@@ -487,9 +492,68 @@ function getScheduleFromServer() {
       parseSourceStatus(data.source_status);
       parseSwitchStatus(data.switch_status);
       showName = data.show_name;
+
+      if (typeof data.schedule_version !== "undefined") {
+        _scheduleVersion = data.schedule_version;
+      }
+      if (typeof data.playout_state !== "undefined" && data.playout_state) {
+        _playoutState = data.playout_state;
+      }
+      updatePlcPanel();
     },
     error: function (jqXHR, textStatus, errorThrown) {},
   });
+}
+
+function updatePlcPanel() {
+  var lampFetch = $("#plc-lamp-fetch");
+  var lampPlay = $("#plc-lamp-play");
+  var lampIce = $("#plc-lamp-ice");
+  var stepEl = $("#plc-step");
+  var anomalyEl = $("#plc-anomaly");
+  if (!lampFetch.length) return;
+
+  if (!_playoutState || !_playoutState.pipeline) {
+    lampFetch.attr("class", "plc-lamp lamp-off").attr("title", $.i18n._("No data"));
+    lampPlay.attr("class", "plc-lamp lamp-off").attr("title", $.i18n._("No data"));
+    lampIce.attr("class", "plc-lamp lamp-off").attr("title", $.i18n._("No data"));
+    stepEl.text("--");
+    anomalyEl.text("");
+    return;
+  }
+
+  var p = _playoutState.pipeline;
+
+  // ICE: audio probe > -45 dB
+  if (p.ice_audio === true) {
+    lampIce.attr("class", "plc-lamp lamp-green").attr("title", $.i18n._("Audio on air"));
+  } else if (p.ice_audio === false) {
+    lampIce.attr("class", "plc-lamp lamp-red").attr("title", $.i18n._("Stream silent!"));
+  } else {
+    lampIce.attr("class", "plc-lamp lamp-off").attr("title", $.i18n._("Waiting for probe"));
+  }
+
+  // FET: schedule received
+  if (p.has_schedule) {
+    lampFetch.attr("class", "plc-lamp lamp-green").attr("title", $.i18n._("Schedule active"));
+  } else {
+    lampFetch.attr("class", "plc-lamp lamp-off").attr("title", $.i18n._("No schedule"));
+  }
+
+  // PLAY: Liquidsoap notify signal (real playback)
+  if (p.now_playing_sid) {
+    lampPlay.attr("class", "plc-lamp lamp-green")
+      .attr("title", $.i18n._("Playing") + " (sid " + p.now_playing_sid + ")");
+    stepEl.text($.i18n._("Playing") + " #" + p.now_playing_sid);
+  } else if (p.has_schedule) {
+    lampPlay.attr("class", "plc-lamp lamp-off").attr("title", $.i18n._("Idle"));
+    stepEl.text($.i18n._("Idle"));
+  } else {
+    lampPlay.attr("class", "plc-lamp lamp-off").attr("title", $.i18n._("No data"));
+    stepEl.text("--");
+  }
+
+  anomalyEl.text("");
 }
 
 function setupQtip() {

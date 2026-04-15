@@ -166,7 +166,7 @@ class Application_Service_ShowService
                 ->save();
 
             $con->commit();
-            Application_Model_RabbitMq::PushSchedule();
+            Application_Model_RabbitMq::PushSchedule('edit_repeating_show_instance');
         } catch (Exception $e) {
             $con->rollback();
             Logging::info('EXCEPTION: Show update failed.');
@@ -274,7 +274,7 @@ class Application_Service_ShowService
             }
 
             $con->commit();
-            Application_Model_RabbitMq::PushSchedule();
+            Application_Model_RabbitMq::PushSchedule('add_or_update_show');
         } catch (Exception $e) {
             $con->rollback();
             $this->isUpdate ? $action = 'update' : $action = 'creation';
@@ -843,7 +843,7 @@ SQL;
 
             Application_Model_StoredFile::updatePastFilesIsScheduled();
 
-            Application_Model_RabbitMq::PushSchedule();
+            Application_Model_RabbitMq::PushSchedule('delete_show');
 
             $con->commit();
 

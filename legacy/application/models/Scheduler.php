@@ -1141,7 +1141,7 @@ final class Application_Model_Scheduler
 
             $this->con->commit();
 
-            Application_Model_RabbitMq::PushSchedule();
+            Application_Model_RabbitMq::PushSchedule('add_item');
         } catch (Exception $e) {
             $this->con->rollback();
 
@@ -1234,7 +1234,7 @@ final class Application_Model_Scheduler
             // $this->con->useDebug(false);
             $this->con->commit();
 
-            Application_Model_RabbitMq::PushSchedule();
+            Application_Model_RabbitMq::PushSchedule('move_item');
         } catch (Exception $e) {
             $this->con->rollback();
 
@@ -1336,7 +1336,7 @@ final class Application_Model_Scheduler
 
             $this->con->commit();
 
-            Application_Model_RabbitMq::PushSchedule();
+            Application_Model_RabbitMq::PushSchedule('remove_items');
         } catch (Exception $e) {
             $this->con->rollback();
 

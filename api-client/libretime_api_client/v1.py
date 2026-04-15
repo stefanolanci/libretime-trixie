@@ -127,6 +127,15 @@ class BaseApiClient(AbstractApiClient):
             **kwargs,
         )
 
+    def update_playout_state(self, state_json: str, **kwargs) -> Response:
+        return self._request(
+            "POST",
+            "/api/playout-state",
+            data=state_json,
+            headers={"Content-Type": "application/json"},
+            **kwargs,
+        )
+
 
 class ApiClient:
     def __init__(self, base_url: str, api_key: str):
@@ -214,6 +223,12 @@ class ApiClient:
 
     def update_metadata_on_tunein(self):
         self._base_client.update_metadata_on_tunein()
+
+    def update_playout_state(self, state_json: str):
+        try:
+            return self._base_client.update_playout_state(state_json=state_json)
+        except RequestException:
+            return None
 
     def trigger_task_manager(self):
         self._base_client.version()

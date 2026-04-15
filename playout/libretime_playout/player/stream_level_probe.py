@@ -21,6 +21,8 @@ class StreamLevelProbeThread(threading.Thread):
     daemon = True
     name = "stream_level_probe"
 
+    last_mean_volume: float | None = None
+
     def __init__(self, url: str, interval: float = 25.0) -> None:
         super().__init__()
         self._url = url
@@ -70,8 +72,10 @@ class StreamLevelProbeThread(threading.Thread):
                 self._url,
                 proc.returncode,
             )
+            self.last_mean_volume = None
             return
         mean_v = float(mean_m.group(1))
+        self.last_mean_volume = mean_v
         if mean_v < -45.0:
             logger.warning(
                 "stream level probe: very low audio mean=%s dB max=%s dB url=%s",
