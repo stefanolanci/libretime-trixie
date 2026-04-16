@@ -1048,6 +1048,24 @@ if $is_first_install && $LIBRETIME_HTTPS_ENABLE; then
   fi
 fi
 
+# UFW baseline rules for first install (both HTTP and HTTPS modes)
+########################################################################################
+
+if $is_first_install && command -v ufw > /dev/null 2>&1 && ufw status 2> /dev/null | grep -q "Status: active"; then
+  if ! $LIBRETIME_HTTPS_ENABLE; then
+    info "UFW is active: allowing ${LIBRETIME_LISTEN_PORT}/tcp for the web UI"
+    ufw allow "${LIBRETIME_LISTEN_PORT}"/tcp
+  fi
+
+  if $LIBRETIME_SETUP_ICECAST; then
+    info "UFW: allowing 8000/tcp for Icecast HTTP streams"
+    ufw allow 8000/tcp
+    info "UFW: allowing 8001/tcp and 8002/tcp for Harbor live inputs"
+    ufw allow 8001/tcp
+    ufw allow 8002/tcp
+  fi
+fi
+
 # Finalize
 ########################################################################################
 
