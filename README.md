@@ -93,6 +93,8 @@ sudo ./install --in-place https://radio.example.org
 
 The script installs APT dependencies (including **Composer** and `php8.4-zip`, **redis-server** for the worker), creates the venv under `/opt/libretime`, configures PostgreSQL / RabbitMQ / Icecast unless disabled, deploys Nginx and PHP-FPM, and enables **nginx**, **php-fpm**, and **redis-server**. The Legacy step runs **`make -C legacy build`** (Composer plus automatic Propel/Zend patches for PHP 8.4).
 
+If the local system hostname is not resolvable, the installer appends a safe mapping to `/etc/hosts` (typically `127.0.1.1 <hostname>`) to avoid Debian host-resolution warnings during setup.
+
 ### HTTPS, Certbot, and Icecast TLS
 
 If the **positional `public_url` starts with `https://`**, the **first install** also:
@@ -102,7 +104,11 @@ If the **positional `public_url` starts with `https://`**, the **first install**
 - Obtains a **Let’s Encrypt** certificate (requires DNS pointing at the server and reachable **80/443**).
 - If **Icecast** is enabled: builds **`/etc/icecast2/bundle.pem`**, patches **`icecast.xml`** for TLS (default HTTPS port **8443**), sets **`stream.outputs.icecast` `public_url`** in `config.yml`, and installs a **renewal deploy hook** for the bundle.
 
-If **UFW** is active, the installer opens **80/tcp**, **443/tcp**, and **8443/tcp** (when Icecast is set up).
+If **UFW** is active on first install, the installer opens:
+
+- **HTTPS mode:** **80/tcp** and **443/tcp** (web + ACME), plus **8443/tcp** when Icecast TLS is enabled.
+- **HTTP mode:** app listen port (default **8080/tcp**).
+- **Both modes (if Icecast is set up):** **8000/tcp** (Icecast HTTP) and **8001/tcp + 8002/tcp** (Harbor live inputs).
 
 To use an **HTTPS** URL but **skip** this automation (e.g. you terminate TLS elsewhere), use:
 
@@ -186,6 +192,12 @@ Open whatever clients need:
 | **8000** | Icecast HTTP |
 | **8443** | Icecast HTTPS (when TLS is enabled by the installer) |
 | **8001** / **8002** | Liquidsoap harbor (live sources), if exposed |
+
+Installer behavior with **UFW active** (first install):
+
+- In HTTPS mode it auto-allows `80/tcp`, `443/tcp`, and Icecast TLS port (`8443/tcp` by default when enabled).
+- In HTTP mode it auto-allows the app listen port (default `8080/tcp`).
+- If Icecast is installed, it also auto-allows `8000/tcp`, `8001/tcp`, and `8002/tcp`.
 
 ---
 
