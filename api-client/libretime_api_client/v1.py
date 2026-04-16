@@ -128,11 +128,12 @@ class BaseApiClient(AbstractApiClient):
         )
 
     def update_playout_state(self, state_json: str, **kwargs) -> Response:
+        # Form field "data" matches push-stream-stats / update-stream-setting-table;
+        # raw JSON + getRawBody() can be empty under some PHP/nginx stacks.
         return self._request(
             "POST",
             "/api/playout-state",
-            data=state_json,
-            headers={"Content-Type": "application/json"},
+            data={"data": state_json},
             **kwargs,
         )
 

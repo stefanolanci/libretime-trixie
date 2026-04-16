@@ -1663,8 +1663,12 @@ class ApiController extends Zend_Controller_Action
         if ($request->isPost()) {
             $this->checkAuth();
 
-            $raw = $request->getRawBody();
-            $state = json_decode($raw, true);
+            // Prefer form field "data" (same contract as push-stream-stats); fall back to raw JSON body.
+            $data_blob = $request->getParam('data');
+            if ($data_blob === null || $data_blob === '') {
+                $data_blob = $request->getRawBody();
+            }
+            $state = json_decode($data_blob, true);
             if (!is_array($state)) {
                 $this->jsonError(400, 'Invalid JSON body');
                 return;
