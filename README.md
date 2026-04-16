@@ -33,7 +33,7 @@ This tree targets **Trixie** specifically (PHP **8.4**, current Python, **Liquid
 - **Root** access (run the installer as root, optionally via `sudo`).
 - Working network so `apt` can reach mirrors.
 - Recommended: dedicated VM or machine, **≥ 2 GB RAM**, enough disk for dependencies and media.
-- Recommended: **UTF-8 locale** (e.g. generate `en_US.UTF-8` or your locale) to reduce PostgreSQL/Python warnings.
+- Recommended: **UTF-8 locale** (e.g. generate `en_US.UTF-8` or your locale) to reduce PostgreSQL/Python warnings and ensure translations/localized UI strings load correctly.
 
 **Stack on Trixie:** PHP **8.4** (FPM), Python **≥ 3.11**, PostgreSQL, **Redis** (Celery results), RabbitMQ, Nginx. APT package lists (`*/packages.ini`, `tools/packages.py`) are **only** for Debian 13 (trixie).
 
