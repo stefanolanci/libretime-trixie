@@ -510,6 +510,38 @@ LibreTime is supported only on Debian 13 (Trixie)."
   fi
 }
 
+ensure_local_hostname_resolution() {
+  local host short_host hosts_line
+
+  host="$(hostname 2>/dev/null || true)"
+  [[ -n "$host" ]] || return 0
+  short_host="${host%%.*}"
+
+  # If hostname already resolves, do nothing.
+  if command -v getent > /dev/null; then
+    if getent hosts "$host" > /dev/null 2>&1; then
+      return 0
+    fi
+    if [[ "$short_host" != "$host" ]] && getent hosts "$short_host" > /dev/null 2>&1; then
+      return 0
+    fi
+  fi
+
+  # Common Debian fix when sudo/apt warn "unable to resolve host".
+  if [[ "$short_host" == "$host" ]]; then
+    hosts_line="127.0.1.1 ${host}"
+  else
+    hosts_line="127.0.1.1 ${host} ${short_host}"
+  fi
+
+  if [[ -f /etc/hosts ]] && grep -Fq "$hosts_line" /etc/hosts; then
+    return 0
+  fi
+
+  warning "local hostname '$host' is not resolvable; appending '$hosts_line' to /etc/hosts"
+  printf "\n%s\n" "$hosts_line" >> /etc/hosts
+}
+
 # list_packages <packages_file>
 list_packages() {
   extra_args=()
@@ -566,6 +598,7 @@ load_config_defaults() {
 
 banner
 check_distribution
+ensure_local_hostname_resolution
 
 load_config_defaults
 
