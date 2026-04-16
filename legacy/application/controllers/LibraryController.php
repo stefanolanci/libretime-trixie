@@ -358,10 +358,13 @@ class LibraryController extends Zend_Controller_Action
         }
 
         if ($request->isPost()) {
-            $js = $this->_getParam('data');
+            $js = $this->normalizeEditFileMdPostRows();
             $serialized = [];
             // need to convert from serialized jQuery array.
             foreach ($js as $j) {
+                if (!isset($j['name'])) {
+                    continue;
+                }
                 // on edit, if no artwork is set and audiofile has image, automatically add it
                 if ($j['name'] == 'artwork') {
                     if ($j['value'] == null || $j['value'] == '') {
@@ -384,7 +387,25 @@ class LibraryController extends Zend_Controller_Action
             // Sanitize any wildly incorrect metadata before it goes to be validated.
             FileDataHelper::sanitizeData($serialized);
 
-            if ($form->isValid($serialized)) {
+            // isValid() validates every element; empty BPM / track number / year or
+            // track_type_id 0 after intval() often fail validators even when the user
+            // only changed e.g. description. Omit those keys so isValidPartial() skips them
+            // and unchanged DB values are kept on save.
+            foreach (['bpm', 'track_number', 'year'] as $optionalKey) {
+                if (!array_key_exists($optionalKey, $serialized)) {
+                    continue;
+                }
+                if ($serialized[$optionalKey] === '' || $serialized[$optionalKey] === null) {
+                    unset($serialized[$optionalKey]);
+                }
+            }
+            if (array_key_exists('track_type_id', $serialized)
+                && ($serialized['track_type_id'] === '' || $serialized['track_type_id'] === null
+                    || (int) $serialized['track_type_id'] === 0)) {
+                unset($serialized['track_type_id']);
+            }
+
+            if ($form->isValidPartial($serialized)) {
                 $file->setDbColMetadata($serialized);
                 $this->view->status = true;
             } else {
@@ -501,5 +522,44 @@ class LibraryController extends Zend_Controller_Action
     {
         $this->_helper->layout->disableLayout();
         // This just spits out publish-dialog.phtml!
+    }
+
+    /**
+     * Accept metadata POST as either:
+     * - jQuery serializeArray shape: data[0][name] / data[0][value] (param key "data")
+     * - flat form fields (preferred): track_title=...&description=... (PHP parses reliably).
+     *
+     * @return array<int, array{name: string, value: mixed}>
+     */
+    private function normalizeEditFileMdPostRows(): array
+    {
+        $request = $this->getRequest();
+        $js = $request->getPost('data', null);
+        if (self::isJquerySerializeArrayParam($js)) {
+            return $js;
+        }
+        $rows = [];
+        $skip = ['format' => true, 'module' => true, 'controller' => true, 'action' => true];
+        foreach ($request->getPost() as $name => $value) {
+            if (isset($skip[$name]) || is_array($value)) {
+                continue;
+            }
+            $rows[] = ['name' => (string) $name, 'value' => $value];
+        }
+
+        return $rows;
+    }
+
+    private static function isJquerySerializeArrayParam(mixed $js): bool
+    {
+        if (!is_array($js) || $js === []) {
+            return false;
+        }
+        $first = reset($js);
+        if (!is_array($first)) {
+            return false;
+        }
+
+        return array_key_exists('name', $first) && array_key_exists('value', $first);
     }
 }

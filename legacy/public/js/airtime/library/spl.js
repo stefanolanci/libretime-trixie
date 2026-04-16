@@ -1129,17 +1129,32 @@ var AIRTIME = (function (AIRTIME) {
   };
 
   mod._initFileMdEvents = function (newTab) {
-    var fileId = newTab.wrapper.find("#file_id").val();
+    var formForTab = newTab.wrapper.find(".edit-md-dialog form");
+    var tabFileId =
+      formForTab.find('input[name="file_id"]').val() ||
+      newTab.wrapper.find("#file_id").val();
 
     newTab.contents.find(".md-cancel").on("click", function () {
       newTab.close();
     });
 
     newTab.contents.find(".md-save").on("click", function () {
-      var data = newTab.wrapper.find(".edit-md-dialog form").serializeArray();
+      // Flat POST fields so PHP always receives track_title, description, etc.
+      // (nested `data` arrays are easy to lose across proxies / PHP parsing).
+      var form = newTab.wrapper.find(".edit-md-dialog form");
+      var fileId =
+        form.find('input[name="file_id"]').val() ||
+        newTab.wrapper.find("#file_id").val();
+      if (!fileId) {
+        return;
+      }
+      var payload = { format: "json" };
+      form.serializeArray().forEach(function (field) {
+        payload[field.name] = field.value;
+      });
       $.post(
-        baseUrl + "library/edit-file-md",
-        { format: "json", id: fileId, data: data },
+        baseUrl + "library/edit-file-md/id/" + encodeURIComponent(fileId),
+        payload,
         function () {
           // don't redraw the library table if we are on calendar page
           // we would be on calendar if viewing recorded file metadata
@@ -1153,7 +1168,9 @@ var AIRTIME = (function (AIRTIME) {
     });
 
     newTab.contents.find(".md-publish").on("click", function () {
-      AIRTIME.publish.openPublishDialog(fileId);
+      if (tabFileId) {
+        AIRTIME.publish.openPublishDialog(tabFileId);
+      }
     });
 
     newTab.wrapper.find(".edit-md-dialog").on("keyup", function (event) {
