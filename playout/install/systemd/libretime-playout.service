@@ -22,6 +22,8 @@ ProtectSystem=full
 Environment=PYTHONOPTIMIZE=2
 Environment=LIBRETIME_CONFIG_FILEPATH=@@CONFIG_FILEPATH@@
 Environment=LIBRETIME_LOG_FILEPATH=@@LOG_DIR@@/playout.log
+Environment=LIBRETIME_STREAM_PROBE_URL=http://127.0.0.1:8000/main
+Environment=LIBRETIME_STREAM_PROBE_INTERVAL=8
 WorkingDirectory=@@WORKING_DIR@@/playout
 
 ExecStart=/usr/local/bin/libretime-playout
