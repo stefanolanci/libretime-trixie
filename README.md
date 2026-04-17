@@ -54,8 +54,8 @@ sudo apt install -y openssh-server
 
 ```bash
 sudo apt install -y git
-git clone https://github.com/stefanolanci/libretime-trixie.git libretime
-cd libretime
+git clone https://github.com/stefanolanci/libretime-trixie.git libretime-trixie
+cd libretime-trixie
 ```
 
 **Option B — Archive** without `.git`: ensure a `VERSION` file exists in the tree root (otherwise `make VERSION` produces a generic placeholder).
@@ -241,7 +241,7 @@ Targeted fixes for **Debian 13 / Liquidsoap 2.3** and races between UI, API, and
 - **Install robustness:** `--wizard` validates TTY, blocks upgrade usage, and rejects combined positional URL; flags requiring arguments now fail with a clear message instead of a cryptic `shift` error; first install without a URL or `--wizard` is now blocked.
 - **Version label:** root `VERSION` file (e.g. `0.0.5 trixie`); `tools/version.sh` does **not** overwrite it when it already contains a semver.
 
-A chronological **development log** (Italian) lives in [`docs/development-log.md`](docs/development-log.md). Optional Cursor rule summary: [`.cursor/rules/development-log.mdc`](.cursor/rules/development-log.mdc).
+A chronological **development log** (Italian) lives in [`docs/development-log.md`](docs/development-log.md).
 
 After `git pull` on an installed host, redeploy changed paths (legacy PHP, playout, Liquidsoap) and restart services as usual.
 
