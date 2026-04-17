@@ -4491,9 +4491,12 @@ body.droppable .artwork-upload .artwork-preview {
 .plc-panel {
     height: 100px;
     float: left;
-    width: 318px;
+    width: -moz-fit-content;
+    width: fit-content;
+    min-width: 208px;
+    max-width: 240px;
     text-align: center;
-    padding: 1px 6px 0;
+    padding: 1px 8px 0 4px;
     box-sizing: border-box;
     overflow: hidden;
     display: flex;
