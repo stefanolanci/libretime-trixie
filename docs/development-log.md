@@ -7,6 +7,14 @@ Repository: `https://github.com/stefanolanci/libretime-trixie` — install targe
 
 ---
 
+## 2026-04-18 — Release v0.1.3-trixie (GitHub) and workflow docs
+
+- **Distribution label:** `VERSION` set to **0.1.3 trixie** for Settings → Status and packaging consistency.
+- **GitHub:** release/tag **v0.1.3-trixie** replaces **v0.1.2-trixie** (includes prior `main` fixes such as install wizard HTTP/public URL handling and `development-log` policy).
+- **Operations:** the dedicated **test VPS** in Cursor/agent rules is **decommissioned**; documentation now describes **Windows → Jupiter** (optional LAN) only.
+
+---
+
 ## 2026-04-18 — Install wizard: HTTP URL normalization (typos + implicit listen port)
 
 - **`install` (root script):** `wizard_fix_http_scheme_typos` corrects common mistakes (`http:host`, `http:/host`) to valid `http://…`.
@@ -56,9 +64,9 @@ Repository: `https://github.com/stefanolanci/libretime-trixie` — install targe
 
 ## Operational notes
 
-- **Test deploy** (working tree → VPS without GitHub): local script `tools/deploy-test-vps.ps1` (not in the minimal public clone; see `.gitignore`).
-- **Git on the server** after `git push`: in the VPS clone (e.g. `/root/libretime-trixie`), `git fetch` + `git reset --hard origin/main` (or `git pull --ff-only`) to match the published commit.
+- **Deploy to production** (working tree → Jupiter without relying on a separate test VPS): local script `tools/deploy-test-vps.ps1 -Jupiter` (not in the minimal public clone; see `.gitignore`).
+- **Git on the server** after `git push`: in the server clone (e.g. `/root/libretime-trixie` on Jupiter), `git fetch` + `git reset --hard origin/main` (or `git pull --ff-only`) to match the published commit.
 
 ---
 
-*Last log update: 2026-04-18.*
+*Last log update: 2026-04-18 (release v0.1.3-trixie entry).*
