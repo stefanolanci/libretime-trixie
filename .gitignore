@@ -1,6 +1,3 @@
-# Local-only dev diary (not published with the tree)
-/docs/development-log.md
-
 # Local-only helpers at repo root (SQL/telnet dumps, etc.)
 /scripts/
 

@@ -241,7 +241,7 @@ Targeted fixes for **Debian 13 / Liquidsoap 2.3** and races between UI, API, and
 - **Install robustness:** `--wizard` validates TTY, blocks upgrade usage, and rejects combined positional URL; flags requiring arguments now fail with a clear message instead of a cryptic `shift` error; first install without a URL or `--wizard` is now blocked.
 - **Version label:** root `VERSION` file (e.g. `0.0.5 trixie`); `tools/version.sh` does **not** overwrite it when it already contains a semver.
 
-A chronological **development log** (Italian) can be kept in `docs/development-log.md` in your clone; that path is **gitignored** and is not part of the install tree on GitHub.
+A chronological **development log** (English) is maintained in [`docs/development-log.md`](docs/development-log.md); update it when you land meaningful fork changes.
 
 After `git pull` on an installed host, redeploy changed paths (legacy PHP, playout, Liquidsoap) and restart services as usual.
 
