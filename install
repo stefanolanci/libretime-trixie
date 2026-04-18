@@ -99,6 +99,60 @@ EOF
   done <<< "$(grep -A1 '^# >' "$0")"
 }
 
+# Wizard HTTP: fix missing slashes after http: (common typos: http:host, http:/host).
+wizard_fix_http_scheme_typos() {
+  local u="$1"
+  case "$u" in
+    http://*) printf '%s' "$u" ;;
+    http:/[!/]*) printf 'http://%s' "${u#http:/}" ;;
+    http:/*) printf '%s' "$u" ;; # already http://…
+    http:[!/]*) printf 'http://%s' "${u#http:}" ;;
+    *) printf '%s' "$u" ;;
+  esac
+}
+
+# Wizard HTTP: append listen port when the URL has no explicit TCP port (browser Origin / CORS).
+wizard_normalize_http_public_url() {
+  local url="$1" port="$2"
+  [[ "$url" == http://* ]] || {
+    printf '%s' "$url"
+    return
+  }
+
+  local rest="${url#http://}"
+  local authority path_prefix
+  if [[ "$rest" == */* ]]; then
+    authority="${rest%%/*}"
+    path_prefix="/${rest#*/}"
+  else
+    authority="$rest"
+    path_prefix=""
+  fi
+
+  # userinfo@host — leave unchanged
+  if [[ "$authority" == *@* ]]; then
+    printf '%s' "$url"
+    return
+  fi
+
+  # IPv6 host literal [addr] or [addr]:port
+  if [[ "$authority" == '['* ]]; then
+    if [[ "$authority" =~ ^\[[^\]]+\]:[0-9]+$ ]]; then
+      printf '%s' "$url"
+    else
+      printf 'http://%s:%s%s' "$authority" "$port" "$path_prefix"
+    fi
+    return
+  fi
+
+  # Hostname or IPv4; explicit port if last ":digits"
+  if [[ "$authority" =~ :[0-9]+$ ]]; then
+    printf '%s' "$url"
+  else
+    printf 'http://%s:%s%s' "$authority" "$port" "$path_prefix"
+  fi
+}
+
 # Interactive wizard. Sets LIBRETIME_PUBLIC_URL, LIBRETIME_CERTBOT_EMAIL, etc.
 run_install_wizard() {
   local wiz_tty=/dev/tty
@@ -112,6 +166,7 @@ run_install_wizard() {
   printf "  ${cyan}1${reset})  Standard ${yellow}HTTP${reset} — no TLS certificate for the web UI.\n"
   printf "      Examples: ${cyan}http://192.168.1.10:8080${reset} or ${cyan}http://radio.example.org${reset}\n"
   printf "      (typical for LAN or until public DNS points at this server).\n"
+  printf "      If you omit the port, ${yellow}%s${reset} (listen port, see --listen-port) is appended automatically.\n" "$LIBRETIME_LISTEN_PORT"
   printf "\n"
   printf "  ${cyan}2${reset})  ${yellow}HTTPS${reset} (Let's Encrypt) — Nginx on 80/443, Certbot, Icecast TLS.\n"
   printf "      Requires a ${cyan}FQDN${reset} with DNS (A/AAAA) pointing at this machine and\n"
@@ -142,14 +197,23 @@ run_install_wizard() {
       printf "URL: " >"$wiz_tty"
       read -r url <"$wiz_tty" || true
       url="$(printf '%s' "$url" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+      url="$(wizard_fix_http_scheme_typos "$url")"
       if [[ -z "$url" ]]; then
         warning "URL cannot be empty."
       elif [[ "$url" =~ ^https:// ]]; then
         warning "you chose HTTP mode: use http://, or go back and pick option 2 for HTTPS."
         url=""
+      elif [[ "$url" != http://* ]]; then
+        warning "URL must start with ${cyan}http://${reset} (two slashes after http:), e.g. ${cyan}http://192.168.1.10${reset}"
+        url=""
       fi
     done
-    LIBRETIME_PUBLIC_URL="$url"
+    local normalized
+    normalized="$(wizard_normalize_http_public_url "$url" "$LIBRETIME_LISTEN_PORT")"
+    if [[ "$normalized" != "$url" ]]; then
+      info "public URL had no explicit TCP port — using ${normalized}"
+    fi
+    LIBRETIME_PUBLIC_URL="$normalized"
     LIBRETIME_CERTBOT_EMAIL=""
     info "HTTP mode — automatic Certbot will not run."
   else

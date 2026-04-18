@@ -7,6 +7,14 @@ Repository: `https://github.com/stefanolanci/libretime-trixie` — install targe
 
 ---
 
+## 2026-04-18 — Install wizard: HTTP URL normalization (typos + implicit listen port)
+
+- **`install` (root script):** `wizard_fix_http_scheme_typos` corrects common mistakes (`http:host`, `http:/host`) to valid `http://…`.
+- **`wizard_normalize_http_public_url`:** for plain `http://` URLs without an explicit TCP port, append **`LIBRETIME_LISTEN_PORT`** (same as `--listen-port`) so browser Origin/CORS matches Nginx; IPv6 bracketed hosts and explicit `:port` left unchanged.
+- **Wizard copy:** documents that omitting the port in HTTP mode auto-appends the listen port.
+
+---
+
 ## 2026-04-16 — Public radio page (responsive player + schedule widget)
 
 - **Rollback tag:** `rollback/pre-radio-ux-2026-04-16` (annotated) on the commit before the embed UI changes.
@@ -53,4 +61,4 @@ Repository: `https://github.com/stefanolanci/libretime-trixie` — install targe
 
 ---
 
-*Last log update: 2026-04-17.*
+*Last log update: 2026-04-18.*
