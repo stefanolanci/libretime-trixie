@@ -7,11 +7,17 @@ Repository: `https://github.com/stefanolanci/libretime-trixie` — install targe
 
 ---
 
+## 2026-04-19 — README and development log vs installer (Debian conventions)
+
+- **README:** expanded **“What `./install` does”** to match the root `install` script (distribution gate, Prepare and `sudo`/`git`/`make`/`ed` bootstrap, first-install vs upgrade, `installer/` templates, PostgreSQL/RabbitMQ/Icecast, Python venv and `tools/packages.py`, legacy build, Nginx, HTTPS/Certbot/Icecast hooks, UFW, finalize). Clarified **Debian-first** usage: run **`./install` as root** without assuming `sudo` is pre-installed; the installer’s Prepare step installs the **`sudo`** package so documented **`sudo -u libretime`** steps work **after** install, with **`runuser` / `su`** alternatives for migrations.
+- **`docs/development-log.md`:** removed per-host operational duplication; **post-install and firewall** remain the single source of truth in the root **README**.
+
+---
+
 ## 2026-04-18 — Release v0.1.3-trixie (GitHub) and workflow docs
 
 - **Distribution label:** `VERSION` set to **0.1.3 trixie** for Settings → Status and packaging consistency.
 - **GitHub:** release/tag **v0.1.3-trixie** replaces **v0.1.2-trixie** (includes prior `main` fixes such as install wizard HTTP/public URL handling and `development-log` policy).
-- **Operations:** the dedicated **test VPS** in Cursor/agent rules is **decommissioned**; documentation now describes **Windows → Jupiter** (optional LAN) only.
 
 ---
 
@@ -62,11 +68,4 @@ Repository: `https://github.com/stefanolanci/libretime-trixie` — install targe
 
 ---
 
-## Operational notes
-
-- **Deploy to production** (working tree → Jupiter without relying on a separate test VPS): local script `tools/deploy-test-vps.ps1 -Jupiter` (not in the minimal public clone; see `.gitignore`).
-- **Git on the server** after `git push`: in the server clone (e.g. `/root/libretime-trixie` on Jupiter), `git fetch` + `git reset --hard origin/main` (or `git pull --ff-only`) to match the published commit.
-
----
-
-*Last log update: 2026-04-18 (release v0.1.3-trixie entry).*
+*Last log update: 2026-04-19 (README / installer documentation alignment).*

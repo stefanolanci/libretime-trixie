@@ -30,20 +30,20 @@ This tree targets **Trixie** specifically (PHP **8.4**, current Python, **Liquid
 ## Requirements
 
 - **Debian 13** or **testing/sid** with `VERSION_CODENAME=trixie` in `/etc/os-release` (the installer accepts `VERSION_ID=13` or codename `trixie`).
-- **Root** access (run the installer as root, optionally via `sudo`).
+- **Root** access: the **`install` script must run as UID 0** (see the check at the start of `./install`). On Debian this normally means an interactive **root shell** (`su -`, `ssh root@…`, or the root account on the console)—not an Ubuntu-style assumption that every command is prefixed with `sudo`. A minimal netinst often has **no `sudo` package** until you install it; that is fine **for running `./install` itself**, because the installer’s **Prepare** phase runs `apt-get install` and explicitly pulls in **`sudo`** (along with `git`, `make`, `ed`, `curl`, `ca-certificates`) so later steps (e.g. `sudo -iH -u postgres …`) and the post-install hints (`sudo -u libretime …`) work **after** a successful first run. If you already use a non-root account with `sudo`, you can invoke `sudo ./install …` only **after** `sudo` exists on the system.
 - Working network so `apt` can reach mirrors.
 - Recommended: dedicated VM or machine, **≥ 2 GB RAM**, enough disk for dependencies and media.
 - Recommended: **UTF-8 locale** (e.g. generate `en_US.UTF-8` or your locale) to reduce PostgreSQL/Python warnings and ensure translations/localized UI strings load correctly.
 
 **Stack on Trixie:** PHP **8.4** (FPM), Python **≥ 3.11**, PostgreSQL, **Redis** (Celery results), RabbitMQ, Nginx. APT package lists (`*/packages.ini`, `tools/packages.py`) are **only** for Debian 13 (trixie).
 
-Optional right after OS install:
+Optional right after OS install (**as root**):
 
 ```bash
-sudo apt update
-sudo apt full-upgrade -y
-# for remote administration:
-sudo apt install -y openssh-server
+apt update
+apt full-upgrade -y
+# optional: remote administration
+apt install -y openssh-server
 ```
 
 ---
@@ -53,16 +53,31 @@ sudo apt install -y openssh-server
 **Option A — Git** (recommended for development or updates):
 
 ```bash
-sudo apt install -y git
+apt install -y git
 git clone https://github.com/stefanolanci/libretime-trixie.git libretime-trixie
 cd libretime-trixie
 ```
 
 **Option B — Archive** without `.git`: ensure a `VERSION` file exists in the tree root (otherwise `make VERSION` produces a generic placeholder).
 
-### What `./install` uses from the tree
+Optional **`.env`** in the same directory as `install`: the script sources it so you can persist `LIBRETIME_*` variables; CLI flags override environment values.
 
-The root **`install`** script consumes **`installer/`** (templates, Nginx, Icecast, `config.yml` example, systemd target), **`tools/packages.py`**, **`tools/version.sh`** (via `make VERSION` when needed), and the application directories **`shared/`**, **`api-client/`**, **`api/`**, **`playout/`**, **`analyzer/`**, **`worker/`**, **`legacy/`**, plus root **`VERSION`**. The published repository includes **only** those two files under **`tools/`**; optional helpers (deploy scripts, SQL checks, stream diagnostics, extra systemd snippets, Windows checksum helper) are **not** shipped—add them locally if you use them. They are **not** run by `./install`.
+### What `./install` does (summary)
+
+1. **Distribution gate** — Aborts unless `/etc/os-release` indicates **Debian** with **Trixie** (`VERSION_ID=13` or `VERSION_CODENAME=trixie`).
+2. **Prepare** — Runs as **root** only; may append **`127.0.1.1 hostname`** to `/etc/hosts` if the machine name does not resolve (avoids noisy Debian resolver warnings). Runs `apt-get update`, installs **`sudo`**, `git`, `make`, `ed`, `curl`, `ca-certificates`, then **`make VERSION`** (uses **`tools/version.sh`**).
+3. **First install vs upgrade** — If `/etc/libretime/config.yml` **does not** exist: first install (requires **`public_url`** or **`--wizard`**; optional interactive **`--wizard`** must have a TTY and must not be combined with a positional URL). If config **already** exists: **upgrade** path only (wizard forbidden; storage path must match existing `storage.path`).
+4. **Configuration draft** — Copies **`installer/config.yml`** to a temporary file under `/etc/libretime/`, then uses **`ed`** to inject `public_url`, API keys, timezone, storage path, and service passwords as applicable.
+5. **Stack** — Optionally sets up **PostgreSQL** (creates role/DB via `postgres` user), **RabbitMQ** (user + vhost), **Icecast** (package + **`installer/icecast/icecast.xml`** with generated passwords). Always installs **Python venv** under **`/opt/libretime`**, resolves **`tools/packages.py`** per component, **`pip install`** for **`shared`**, **`api-client`**, **`api[prod]`**, **`playout`**, **`analyzer`**, **`worker`**, deploys **systemd** units and **logrotate** snippets, installs **Redis** for the worker.
+6. **Legacy** — Installs PHP/Composer stack from **`legacy/packages.ini`**, runs **`make -C legacy build`**, deploys PHP-FPM pool and legacy tree to **`/usr/share/libretime/legacy`** (or **`--in-place`** keeps the tree inside the clone).
+7. **Nginx** — Deploys **`installer/nginx/libretime.conf`** (internal listen **`--listen-port`**, default **8080**), disables the default site on first install.
+8. **HTTPS (first install only)** — When `public_url` is **`https://…`** and **`LIBRETIME_HTTPS_AUTO`** is true (default): installs **Certbot** + **python3-certbot-nginx**, deploys **`installer/nginx/libretime-https-proxy.conf`**, runs **certbot --nginx**, optionally builds Icecast **`bundle.pem`**, runs **`installer/icecast/patch_xml_ssl.py`** and **`installer/config/patch_icecast_public_urls.py`**, installs **`installer/letsencrypt/renew-icecast-bundle.sh`** as a deploy hook. On failure, prints a manual **certbot** hint.
+9. **UFW** — If **ufw** is active, opens ports for the chosen mode (80/443 for HTTPS automation, listen port for HTTP, Icecast/Harbor ports when Icecast is enabled).
+10. **Finalize** — Moves the temp config to **`/etc/libretime/config.yml`**, enables **nginx**, **`php*-fpm`**, **`libretime.target`**, reloads nginx/php-fpm.
+
+### What the published tree must contain for `./install`
+
+From a **clean clone** of this fork, **`./install`** expects **`installer/`** (including **`config.yml`** template, **`nginx/`**, **`icecast/`**, **`letsencrypt/`**, **`uninstall-libretime.sh`**, **`systemd/libretime.target`**), **`tools/packages.py`**, **`tools/version.sh`**, and the application directories **`shared/`**, **`api-client/`**, **`api/`**, **`playout/`**, **`analyzer/`**, **`worker/`**, **`legacy/`**, plus root **`VERSION`**. The published repository includes **only** those two paths under **`tools/`**; optional local helpers (deploy scripts, diagnostics under **`scripts/`**, etc.) are **not** shipped on GitHub—add them locally if you use them. They are **not** invoked by `./install`.
 
 ---
 
@@ -76,19 +91,19 @@ chmod +x install tools/version.sh installer/uninstall-libretime.sh installer/let
 
 ### Basic usage
 
-Pass the **public URL** listeners will use (HTTP or HTTPS):
+Pass the **public URL** listeners will use (HTTP or HTTPS). Examples assume a **root shell** on the server (`#` prompt); if you use `sudo` after it is installed, prefix the same commands.
 
 ```bash
 cd /path/to/libretime
-sudo ./install http://192.168.1.10:8080
+./install http://192.168.1.10:8080
 # or
-sudo ./install https://radio.example.org
+./install https://radio.example.org
 ```
 
 To keep the app files inside the clone (development):
 
 ```bash
-sudo ./install --in-place https://radio.example.org
+./install --in-place https://radio.example.org
 ```
 
 The script installs APT dependencies (including **Composer** and `php8.4-zip`, **redis-server** for the worker), creates the venv under `/opt/libretime`, configures PostgreSQL / RabbitMQ / Icecast unless disabled, deploys Nginx and PHP-FPM, and enables **nginx**, **php-fpm**, and **redis-server**. The Legacy step runs **`make -C legacy build`** (Composer plus automatic Propel/Zend patches for PHP 8.4).
@@ -113,9 +128,9 @@ If **UFW** is active on first install, the installer opens:
 To use an **HTTPS** URL but **skip** this automation (e.g. you terminate TLS elsewhere), use:
 
 ```bash
-sudo LIBRETIME_HTTPS_AUTO=false ./install https://radio.example.org
+LIBRETIME_HTTPS_AUTO=false ./install https://radio.example.org
 # or
-sudo ./install --no-https-auto https://radio.example.org
+./install --no-https-auto https://radio.example.org
 ```
 
 Relevant environment variables:
@@ -130,7 +145,7 @@ Relevant environment variables:
 For a guided flow (HTTP vs HTTPS, Certbot email, summary):
 
 ```bash
-sudo ./install --wizard
+./install --wizard
 ```
 
 - **Do not** pass a positional `public_url` together with `--wizard`.
@@ -158,14 +173,23 @@ You can persist settings in a **`.env`** file next to `install`; flags override 
 
 2. **Database migrations**
 
+   After a successful install, the **`sudo`** package is present. Typical invocation:
+
    ```bash
    sudo -u libretime libretime-api migrate
+   ```
+
+   If you prefer **not** to use `sudo` (e.g. minimal habit on Debian), equivalent options include:
+
+   ```bash
+   runuser -u libretime -- libretime-api migrate
+   # or: su - libretime -s /bin/sh -c "libretime-api migrate"
    ```
 
 3. **Start services**
 
    ```bash
-   sudo systemctl start libretime.target
+   systemctl start libretime.target
    ```
 
 4. **Quick check**
@@ -253,11 +277,11 @@ Run as **root** from a checkout that still contains **`installer/icecast/icecast
 You must now choose an explicit uninstall level:
 
 ```bash
-sudo bash installer/uninstall-libretime.sh --keep-data
+bash installer/uninstall-libretime.sh --keep-data
 # or
-sudo bash installer/uninstall-libretime.sh --remove-data
+bash installer/uninstall-libretime.sh --remove-data
 # or
-sudo bash installer/uninstall-libretime.sh --purge-packages
+bash installer/uninstall-libretime.sh --purge-packages
 ```
 
 - `--keep-data`: remove app/services/config while preserving media (`/srv/libretime`) and DB/broker data.
@@ -271,7 +295,7 @@ The script stops and disables LibreTime units, removes app trees and integration
 ## Logs and troubleshooting
 
 ```bash
-sudo journalctl -u libretime-api -u libretime-playout -u libretime-liquidsoap \
+journalctl -u libretime-api -u libretime-playout -u libretime-liquidsoap \
   -u libretime-analyzer -u libretime-worker -u redis-server -n 150 --no-pager
 ```
 
