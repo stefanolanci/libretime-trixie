@@ -154,7 +154,9 @@ class LiquidsoapClient:
 
     def web_stream_stop_buffer(self) -> None:
         with self.conn:
-            self.conn.write("http.stop")
+            # LS 2.3 does not expose "http.stop" for input.ffmpeg-backed HTTP source.
+            # Disable web stream routing through the supported source namespace.
+            self.conn.write("sources.stop_web_stream")
             self.conn.read()  # Flush
             self.conn.write("web_stream.set_id -1")
             self.conn.read()  # Flush

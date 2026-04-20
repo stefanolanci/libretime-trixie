@@ -4,7 +4,7 @@ Minimal passive pipeline monitor.
 Runs in its own daemon thread.  Reads three signals that are already
 available (no telnet, no HTTP to Liquidsoap/Icecast):
 
-  ICE   – StreamLevelProbeThread.last_mean_volume  (in-memory read)
+  AUD   – StreamLevelProbeThread.last_mean_volume vs −45 dB (in-memory read)
   FET   – boolean flag set by PypoFetch            (in-memory read)
   PLAY  – file written by Liquidsoap notify()      (fast local read)
 
@@ -68,6 +68,8 @@ class PipelineMonitor(Thread):
             time.sleep(self._interval)
 
     def _report(self) -> None:
+        ingest_connected = self._read_icecast_ingest_status()
+
         ice_audio: Optional[bool] = None
         link_up: Optional[bool] = None
         flow_up: Optional[bool] = None
@@ -75,12 +77,14 @@ class PipelineMonitor(Thread):
             vol = self._probe_volume_getter()
             if vol is not None:
                 ice_audio = vol > -45.0
+            elif ingest_connected is True:
+                # Probe could not sample (e.g. mount reconnect); do not force AUD off
+                # while Icecast still shows an active source on the configured mount.
+                ice_audio = True
         if self._probe_link_getter is not None:
             link_up = self._probe_link_getter()
         if self._probe_flow_getter is not None:
             flow_up = self._probe_flow_getter()
-
-        ingest_connected = self._read_icecast_ingest_status()
 
         now_playing_sid: Optional[int] = None
         try:

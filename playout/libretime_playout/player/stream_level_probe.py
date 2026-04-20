@@ -4,11 +4,15 @@ Optional background sampling of the published stream loudness via ffmpeg volumed
 Enable with environment variables on libretime-playout:
   LIBRETIME_STREAM_PROBE_URL=http://127.0.0.1:8000/main
   LIBRETIME_STREAM_PROBE_INTERVAL=8    # seconds between samples (optional)
+  LIBRETIME_STREAM_PROBE_STALE_HOLD_SEC=45
+    After a successful sample, keep last mean/link/flow on parse failures for this many
+    seconds (Icecast reconnect / webstream transitions often break volumedetect parsing).
 """
 
 from __future__ import annotations
 
 import logging
+import os
 import re
 import subprocess
 import threading
@@ -29,6 +33,10 @@ class StreamLevelProbeThread(threading.Thread):
         super().__init__()
         self._url = url
         self._interval = max(5.0, interval)
+        self._last_good_mono: float = 0.0
+        self._stale_hold_sec = float(
+            os.environ.get("LIBRETIME_STREAM_PROBE_STALE_HOLD_SEC", "45")
+        )
 
     def run(self) -> None:
         # Small startup delay to avoid misleading first probe when chain is still settling.
@@ -73,6 +81,14 @@ class StreamLevelProbeThread(threading.Thread):
                 self._url,
                 proc.returncode,
             )
+            age = time.monotonic() - self._last_good_mono
+            if (
+                self.last_mean_volume is not None
+                and self._last_good_mono > 0.0
+                and age < max(5.0, self._stale_hold_sec)
+            ):
+                # Hold last good telemetry for PLC during short Icecast / mux glitches.
+                return
             self.last_mean_volume = None
             self.last_link_up = proc.returncode == 0
             self.last_flowing = False
@@ -81,6 +97,7 @@ class StreamLevelProbeThread(threading.Thread):
         self.last_mean_volume = mean_v
         self.last_link_up = True
         self.last_flowing = True
+        self._last_good_mono = time.monotonic()
         if mean_v < -45.0:
             logger.warning(
                 "stream level probe: very low audio mean=%s dB max=%s dB url=%s",

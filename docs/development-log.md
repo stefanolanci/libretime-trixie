@@ -7,6 +7,14 @@ Repository: `https://github.com/stefanolanci/libretime-trixie` — install targe
 
 ---
 
+## 2026-04-20 — Liquidsoap handoff hardening (web stream + live cut behavior)
+
+- **`playout/libretime_playout/liquidsoap/ls_script.liq`:** hardened the automation source-selection guard so the queue branch remains selected while web stream handoff state is still active (`schedule_streaming() or web_stream_enabled() or web_stream_armed() or web_stream_id() != "-1"`). This reduces unintended fallbacks during short handoff windows.
+- **`playout/libretime_playout/liquidsoap/ls_script.liq`:** normalized web stream state transitions (`web_stream_id` initialization, trimmed IDs in `web_stream_set_id`, explicit `web_stream_armed` set/clear on start/stop) so control flow is deterministic across transient API updates.
+- **`playout/libretime_playout/liquidsoap/client/_client.py` + playout queue sync path:** when the currently playing scheduled row is removed/changed, playout now requests a targeted force-cut on the active queue slot and immediately re-syncs queue content, keeping automation aligned with schedule edits.
+
+---
+
 ## 2026-04-19 — README and development log vs installer (Debian conventions)
 
 - **README:** expanded **“What `./install` does”** to match the root `install` script (distribution gate, Prepare and `sudo`/`git`/`make`/`ed` bootstrap, first-install vs upgrade, `installer/` templates, PostgreSQL/RabbitMQ/Icecast, Python venv and `tools/packages.py`, legacy build, Nginx, HTTPS/Certbot/Icecast hooks, UFW, finalize). Clarified **Debian-first** usage: run **`./install` as root** without assuming `sudo` is pre-installed; the installer’s Prepare step installs the **`sudo`** package so documented **`sudo -u libretime`** steps work **after** install, with **`runuser` / `su`** alternatives for migrations.

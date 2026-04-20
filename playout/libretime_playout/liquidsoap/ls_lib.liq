@@ -102,20 +102,22 @@ def clear_queue(s)
     source.skip(s)
 end
 
-# HTTP input with "restart" command.  Uses input.ffmpeg which relays http(s)
-# streams and accepts lavfi sources for idle audio (e.g. anullsrc).
+# HTTP input with "restart" command for web streams.
+# We use input.http so telnet commands "#{id}.url/.stop/.start/.status" are available.
+# If initial_url is an ffmpeg lavfi URI (anullsrc=...), input.http cannot parse it, so
+# we bootstrap with a harmless dummy HTTP URL and rely on runtime "#{id}.url <web_url>".
 def input.http_restart(~id, ~initial_url)
-
-  ffmpeg_input =
+  startup_url =
     if string.contains(substring="anullsrc=", initial_url) then
-      input.ffmpeg(id=id, format="lavfi", initial_url)
+      "http://127.0.0.1:9"
     else
-      input.ffmpeg(id=id, initial_url)
+      initial_url
     end
-  source = audio_to_stereo(ffmpeg_input)
+  source = audio_to_stereo(input.http(id=id, startup_url))
 
   def stopped()
-    "stopped" == list.hd(server.execute("#{id}.status"), default="")
+    status = string(server.execute("#{id}.status"))
+    string.contains(substring="stopped", status)
   end
 
   server.register(namespace=id,
@@ -160,8 +162,13 @@ def cross_http(~debug=true, ~http_input_id, source)
   cross_d = 3.
 
   def crosser(ending, starting)
-    url = list.hd(server.execute("#{id}.url"), default="")
-    status = list.hd(server.execute("#{id}.status"))
+    # input.ffmpeg has no "#{id}.url" / "#{id}.status" telnet API (LS 2.3).
+    url_raw = last_url()
+    url =
+      if string.contains(substring="ERROR:", url_raw) then ""
+      else url_raw end
+    status =
+      if source.is_ready() then "streaming" else "stopped" end
     on_m([("source_url", url)])
     if debug then
       log("New track inside HTTP stream")
@@ -197,10 +204,12 @@ def http_fallback(~http_input_id, ~http, ~default)
   end
 
   def connected()
-    status = list.hd(server.execute("#{id}.status"), default="")
-    not(list.mem(status, ["polling", "stopped"]))
+    # No "#{id}.status" on input.ffmpeg; readiness matches previous intent closely.
+    http.is_ready()
   end
-  connected = gracetime(connected)
+  # Longer hold than the default 3s: after Icecast broken-pipe reconnect, http.is_ready
+  # can flap false briefly and triggers to_static → to_live (audible + PLC chaos).
+  connected = gracetime(delay=10., connected)
 
   def to_live(a, b) =
     log("TRANSITION to live")
@@ -215,7 +224,9 @@ def http_fallback(~http_input_id, ~http, ~default)
   switch(
     track_sensitive=false,
     transitions=[to_live, to_static],
-    [({connected() and source.is_ready(http) and web_stream_enabled()}, http),
+    # connected() wraps http.is_ready in gracetime; extra is_ready() made
+    # cross_http briefly select default (offline/silence) until LS restart.
+    [({connected() and web_stream_enabled()}, http),
      ({true}, default)])
 
 end

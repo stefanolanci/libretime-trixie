@@ -1,6 +1,6 @@
 from datetime import datetime, time, timedelta, timezone
 from operator import itemgetter
-from typing import Dict
+from typing import Dict, Set
 
 from libretime_api_client.v2 import ApiClient
 from libretime_shared.datetime import time_in_milliseconds, time_in_seconds
@@ -53,24 +53,51 @@ def get_schedule(api_client: ApiClient) -> Events:
     ).json()
 
     events: Dict[str, AnyEvent] = {}
+    show_instance_cache: Dict[int, dict] = {}
+    show_cache: Dict[int, dict] = {}
+    file_cache: Dict[int, dict] = {}
+    webstream_cache: Dict[int, dict] = {}
+    live_events_emitted: Set[int] = set()
+
     for item in sorted(schedule, key=itemgetter("starts_at")):
         item["starts_at"] = event_isoparse(item["starts_at"])
         item["ends_at"] = event_isoparse(item["ends_at"])
 
-        show_instance = api_client.get_show_instance(item["instance"]).json()
-        show = api_client.get_show(show_instance["show"]).json()
+        instance_id = item["instance"]
+        if instance_id not in show_instance_cache:
+            show_instance_cache[instance_id] = api_client.get_show_instance(
+                instance_id
+            ).json()
+        show_instance = show_instance_cache[instance_id]
 
-        if show["live_enabled"]:
-            show_instance["starts_at"] = event_isoparse(show_instance["starts_at"])
-            show_instance["ends_at"] = event_isoparse(show_instance["ends_at"])
-            generate_live_events(events, show_instance, stream_preferences)
+        show_id = show_instance["show"]
+        if show_id not in show_cache:
+            show_cache[show_id] = api_client.get_show(show_id).json()
+        show = show_cache[show_id]
+
+        if show["live_enabled"] and instance_id not in live_events_emitted:
+            live_events_emitted.add(instance_id)
+            show_instance_live = dict(show_instance)
+            show_instance_live["starts_at"] = event_isoparse(
+                show_instance_live["starts_at"]
+            )
+            show_instance_live["ends_at"] = event_isoparse(
+                show_instance_live["ends_at"]
+            )
+            generate_live_events(events, show_instance_live, stream_preferences)
 
         if item["file"]:
-            file = api_client.get_file(item["file"]).json()
+            file_id = item["file"]
+            if file_id not in file_cache:
+                file_cache[file_id] = api_client.get_file(file_id).json()
+            file = file_cache[file_id]
             generate_file_events(events, item, file, show, stream_preferences)
 
         elif item["stream"]:
-            webstream = api_client.get_webstream(item["stream"]).json()
+            stream_id = item["stream"]
+            if stream_id not in webstream_cache:
+                webstream_cache[stream_id] = api_client.get_webstream(stream_id).json()
+            webstream = webstream_cache[stream_id]
             generate_webstream_events(events, item, webstream, show)
 
     return dict(sorted(events.items()))

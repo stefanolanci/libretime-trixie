@@ -1,7 +1,11 @@
 boot_timestamp = string(time())
 
 web_stream_enabled = ref(false)
-web_stream_id = ref( '-1')
+web_stream_id = ref("-1")
+# True from web_stream.set_id (prebuffer) until stop_web_stream. http_fallback still uses only
+# web_stream_enabled so the file is not cut early; switch:blank+schedule uses this to avoid
+# the outer default/offline dip between file EOF and start_web_stream.
+web_stream_armed = ref(false)
 
 show_name = interactive.string("show_name", "")
 
@@ -13,6 +17,10 @@ just_switched = ref(false)
 
 sources = ref([])
 source_id = ref (0)
+
+# Dedicated web stream HTTP source controlled via telnet command "http.restart".
+http = input.http_restart(id="http", initial_url=http_idle_initial_path)
+ignore(output.dummy(fallible=true, http))
 
 def create_source()
     this_source_id = source_id()
@@ -26,13 +34,13 @@ def create_source()
     l = amplify(1., override="libretime_replay_gain", l)
 
     # LS 2.3 applies liq_cue_in / liq_cue_out / liq_fade_in / liq_fade_out
-    # natively during request resolution — no explicit cue_cut or fade
+    # natively during request resolution - no explicit cue_cut or fade
     # operators needed.  The playout annotation sends the values configured
     # in the UI (per-track cue points, fade durations).
 
     l = map_metadata(notify_queue, l)
     l = cross_http(http_input_id="http", l)
-    l = http_fallback(http_input_id="http", http=l, default=l)
+    l = http_fallback(http_input_id="http", http=http, default=l)
     l = map_metadata(id="map_metadata:schedule", update=false, append_title, l)
     sources := list.append([l], sources())
     server.register(namespace="queues",
@@ -55,11 +63,10 @@ dynamic_metadata_callback := queue.insert_metadata
 
 output.dummy(fallible=true, queue)
 
-http = input.http_restart(id="http", initial_url=http_idle_initial_path)
-ignore(output.dummy(fallible=true, http))
-
 def web_stream_set_id(value)
-    web_stream_id := value
+    sid = string.trim(value)
+    web_stream_id := sid
+    if sid != "-1" then web_stream_armed := true else web_stream_armed := false end
     string(web_stream_id())
 end
 
@@ -72,11 +79,14 @@ server.register(namespace="sources",
                 "start_web_stream",
                 fun (s) -> begin log("sources.start_web_stream")
                     notify([("schedule_table_id", web_stream_id())])
+                    web_stream_armed := true ;
                     web_stream_enabled := true "enabled" end)
 server.register(namespace="sources",
                 description="Stop webstream source",
                 "stop_web_stream",
-                fun (s) -> begin log("sources.stop_web_stream") web_stream_enabled := false "disabled" end)
+                fun (s) -> begin log("sources.stop_web_stream")
+                    web_stream_armed := false ;
+                    web_stream_enabled := false "disabled" end)
 
 server.register(namespace="web_stream",
                 description="Set the web stream id",
@@ -136,7 +146,10 @@ end
 s = switch(id="switch:blank+schedule",
             track_sensitive=false,
             transitions=[transition_default, transition],
-            [({schedule_streaming()}, queue), ({true}, default)]
+            # Web streams are routed inside `queue` (http_fallback). Keep this branch while
+            # schedule is on, output is enabled, web_stream_armed (set_id prebuffer), or non-idle
+            # web_stream_id; otherwise a file->web handoff can briefly select `default` (offline).
+            [({schedule_streaming() or web_stream_enabled() or web_stream_armed() or web_stream_id() != "-1"}, queue), ({true}, default)]
     )
 
 s = if input_show_port != 0 and input_show_mount != "" then
