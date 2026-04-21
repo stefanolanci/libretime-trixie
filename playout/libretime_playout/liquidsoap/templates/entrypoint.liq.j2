@@ -10,24 +10,24 @@ input_show_mount = {{ config.stream.inputs.show.mount | quote }}
 input_show_port = {{ config.stream.inputs.show.port }}
 input_show_secure = {{ config.stream.inputs.show.secure | string | lower }}
 
-# Settings
+# Settings (LS 2.3 syntax: `settings.path.to.key := value`)
 {% if paths.log_filepath is defined -%}
-set("log.file.path", "{{ paths.log_filepath }}")
+settings.log.file.path := "{{ paths.log_filepath }}"
 {%- else -%}
-set("log.file", false)
+settings.log.file.path := ""
 {%- endif %}
 
-set("server.telnet", true)
-set("server.telnet.bind_addr", {{ config.liquidsoap.server_listen_address | quote }})
-set("server.telnet.port", {{ config.liquidsoap.server_listen_port }})
+settings.server.telnet := true
+settings.server.telnet.bind_addr := {{ config.liquidsoap.server_listen_address | quote }}
+settings.server.telnet.port := {{ config.liquidsoap.server_listen_port }}
 
-set("harbor.bind_addrs", ["{{ config.liquidsoap.harbor_listen_address | join('", "') }}"])
+settings.harbor.bind_addrs := ["{{ config.liquidsoap.harbor_listen_address | join('", "') }}"]
 
 {% if config.liquidsoap.harbor_ssl_certificate -%}
-set("harbor.ssl.certificate", "{{ config.liquidsoap.harbor_ssl_certificate }}")
-set("harbor.ssl.private_key", "{{ config.liquidsoap.harbor_ssl_private_key }}")
+settings.harbor.ssl.certificate := "{{ config.liquidsoap.harbor_ssl_certificate }}"
+settings.harbor.ssl.private_key := "{{ config.liquidsoap.harbor_ssl_private_key }}"
 {% if config.liquidsoap.harbor_ssl_password -%}
-set("harbor.ssl.password", "{{ config.liquidsoap.harbor_ssl_password }}")
+settings.harbor.ssl.password := "{{ config.liquidsoap.harbor_ssl_password }}"
 {%- endif %}
 {% endif -%}
 

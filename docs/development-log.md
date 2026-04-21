@@ -7,6 +7,17 @@ Repository: `https://github.com/stefanolanci/libretime-trixie` — install targe
 
 ---
 
+## 2026-04-21 — Liquidsoap 2.3 deprecation cleanup and idempotent web-stream restart
+
+- **`playout/libretime_playout/liquidsoap/templates/entrypoint.liq.j2`:** replaced the legacy `set("path.to.key", value)` calls with the Liquidsoap 2.3 assignment syntax `settings.path.to.key := value` across `log.file.path`, `server.telnet` / `server.telnet.bind_addr` / `server.telnet.port`, `harbor.bind_addrs`, and the `harbor.ssl.*` block. The generated `radio.liq` no longer carries LS 2.3 deprecation warnings at startup.
+- **`playout/libretime_playout/liquidsoap/ls_script.liq`:** replaced deprecated `audio_to_stereo(...)` with `stereo(...)` on the automation queue source and on the `/show` and `/main` harbor inputs; replaced `map_metadata(...)` with `metadata.map(...)` on the queue-notify, schedule append-title and offline-label chains.
+- **`playout/libretime_playout/liquidsoap/ls_lib.liq`:** replaced the last deprecated `json_of(m)` call in `notify_stream` with `json.stringify(m)`. With these three files `liquidsoap --check` on the generated script emits zero deprecation warnings on LS 2.3.
+- **`playout/libretime_playout/liquidsoap/ls_lib.liq`:** added `start=false` to the dummy-URL `input.http` bootstrap so the HTTP source stays idle until a real web-stream URL is armed through the `restart` telnet command. This removes the repeated 2-second reconnect loop against the bootstrap sentinel URL that was flooding the Liquidsoap journal while no web stream was active.
+- **`playout/libretime_playout/liquidsoap/ls_lib.liq`:** made the `input.http_restart` telnet command **idempotent** — it keeps a `last_url` reference and skips the `http.stop` / `http.start` cycle when the same URL is re-asserted while the HTTP source is already streaming. Playout can re-issue `http.restart <same url>` on schedule-refresh events while a web-stream slot is still armed; the previous non-idempotent behaviour produced a sub-frame track boundary (Liquidsoap "Source created multiple tracks in a single frame!") that corrupted PCM frames sent to the local Icecast outputs, triggering **Broken pipe** on `/main` and `/main-low` and briefly disconnecting listener apps. First activation, real URL changes, and network-recovery restarts keep going through the full stop/start cycle; the idempotent path only short-circuits the redundant same-URL re-assertions and is logged as `idempotent no-op`.
+- **`VERSION`:** bumped to `0.1.5 trixie` for Settings → Status and packaging consistency.
+
+---
+
 ## 2026-04-20 — Liquidsoap handoff hardening (web stream + live cut behavior)
 
 - **`playout/libretime_playout/liquidsoap/ls_script.liq`:** hardened the automation source-selection guard so the queue branch remains selected while web stream handoff state is still active (`schedule_streaming() or web_stream_enabled() or web_stream_armed() or web_stream_id() != "-1"`). This reduces unintended fallbacks during short handoff windows.
@@ -76,4 +87,4 @@ Repository: `https://github.com/stefanolanci/libretime-trixie` — install targe
 
 ---
 
-*Last log update: 2026-04-19 (README / installer documentation alignment).*
+*Last log update: 2026-04-21 (LS 2.3 deprecation cleanup and idempotent web-stream restart).*

@@ -18,7 +18,8 @@ end
 
 def notify_stream(m)
   if web_stream_id() != "-1" then
-    json_str = string.replace(pattern="\n",(fun (s) -> ""), json_of(m))
+    # LS 2.3: json.stringify replaces the deprecated json_of.
+    json_str = string.replace(pattern="\n",(fun (s) -> ""), json.stringify(m))
     json_str = string.replace(pattern="'",(fun (s) -> "'\''"), json_str)
     gateway("webstream '#{web_stream_id()}' '#{json_str}'")
   end
@@ -106,6 +107,18 @@ end
 # We use input.http so telnet commands "#{id}.url/.stop/.start/.status" are available.
 # If initial_url is an ffmpeg lavfi URI (anullsrc=...), input.http cannot parse it, so
 # we bootstrap with a harmless dummy HTTP URL and rely on runtime "#{id}.url <web_url>".
+# start=false keeps the HTTP input idle (and silent in the journal) until a real web
+# stream URL is provided via the "restart" command below; otherwise input.http would
+# retry the dummy URL every ~2s and flood the Liquidsoap log with connection errors.
+#
+# The "restart" telnet command is idempotent: when playout re-sends the same URL while
+# the source is already streaming (observed during schedule refresh that re-asserts the
+# active webstream slot), we skip the stop/start cycle. Without this guard, the cycle
+# produces a sub-frame track boundary inside the http source (LS warns "Source created
+# multiple tracks in a single frame!") which corrupts the PCM frames sent to the local
+# Icecast outputs and triggers "Broken pipe" on /main and /main-low, disconnecting
+# listener apps. The idempotent no-op preserves a stable stream for the listener while
+# still allowing real URL changes, first activation, and network-recovery restarts.
 def input.http_restart(~id, ~initial_url)
   startup_url =
     if string.contains(substring="anullsrc=", initial_url) then
@@ -113,7 +126,11 @@ def input.http_restart(~id, ~initial_url)
     else
       initial_url
     end
-  source = audio_to_stereo(input.http(id=id, startup_url))
+  source = stereo(input.http(id=id, start=false, startup_url))
+
+  # Last URL actually armed via the "restart" telnet command. Used to detect redundant
+  # calls from playout (same URL while already streaming) and skip the stop/start cycle.
+  last_url = ref(startup_url)
 
   def stopped()
     status = string(server.execute("#{id}.status"))
@@ -124,17 +141,26 @@ def input.http_restart(~id, ~initial_url)
                   "restart",
                   usage="restart [url]",
                   fun (url) -> begin
-                    if url != "" then
-                      log(string(server.execute("#{id}.url #{url}")))
+                    target_url =
+                      if url == "" then last_url()
+                      else url end
+                    if target_url == last_url() and not stopped() then
+                      log("#{id}.restart: idempotent no-op (url unchanged, source streaming)")
+                      "Done"
+                    else
+                      if url != "" then
+                        log(string(server.execute("#{id}.url #{url}")))
+                        last_url := url
+                      end
+                      log(string(server.execute("#{id}.stop")))
+                      # LS 2.3: thread.run.recurrent replaces add_timeout
+                      thread.run.recurrent(delay=0.5,
+                        { if stopped() then
+                            log(string(server.execute("#{id}.start"))) ;
+                            (-1.)
+                          else 0.5 end})
+                      "Done"
                     end
-                    log(string(server.execute("#{id}.stop")))
-                    # LS 2.3: thread.run.recurrent replaces add_timeout
-                    thread.run.recurrent(delay=0.5,
-                      { if stopped() then
-                          log(string(server.execute("#{id}.start"))) ;
-                          (-1.)
-                        else 0.5 end})
-                    "Done"
                   end)
 
   source
@@ -157,7 +183,7 @@ def cross_http(~debug=true, ~http_input_id, source)
     end
     m
   end
-  source = map_metadata(on_m, source)
+  source = metadata.map(on_m, source)
 
   cross_d = 3.
 

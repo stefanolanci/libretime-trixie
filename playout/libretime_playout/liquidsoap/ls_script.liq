@@ -26,7 +26,7 @@ def create_source()
     this_source_id = source_id()
     l = request.queue(id="s#{this_source_id}")
 
-    l = audio_to_stereo(id="queue_src", l)
+    l = stereo(id="queue_src", l)
 
     # Replay gain: amplify reads the per-track value from annotation metadata.
     # The UI "Replay Gain" setting controls whether the API sends a value;
@@ -38,10 +38,10 @@ def create_source()
     # operators needed.  The playout annotation sends the values configured
     # in the UI (per-track cue points, fade durations).
 
-    l = map_metadata(notify_queue, l)
+    l = metadata.map(notify_queue, l)
     l = cross_http(http_input_id="http", l)
     l = http_fallback(http_input_id="http", http=http, default=l)
-    l = map_metadata(id="map_metadata:schedule", update=false, append_title, l)
+    l = metadata.map(id="map_metadata:schedule", update=false, append_title, l)
     sources := list.append([l], sources())
     server.register(namespace="queues",
                 "s#{this_source_id}_skip",
@@ -104,7 +104,7 @@ def map_message_offline(m) =
   [("title", message_offline())]
 end
 
-default = map_metadata(id="map_metadata:offline", map_message_offline, default)
+default = metadata.map(id="map_metadata:offline", map_message_offline, default)
 ignore(output.dummy(default, fallible=true))
 
 input_main_streaming = ref (false)
@@ -161,7 +161,7 @@ s = if input_show_port != 0 and input_show_mount != "" then
             max=40.,
             on_connect=input_show_on_connect,
             on_disconnect=input_show_on_disconnect)
-    input_show_source = audio_to_stereo(input_show_harbor)
+    input_show_source = stereo(input_show_harbor)
 
     ignore(output.dummy(input_show_source, fallible=true))
 
@@ -183,7 +183,7 @@ s = if input_main_port != 0 and input_main_mount != "" then
             max=40.,
             on_connect=input_main_on_connect,
             on_disconnect=input_main_on_disconnect)
-    input_main_source = audio_to_stereo(input_main_harbor)
+    input_main_source = stereo(input_main_harbor)
 
     ignore(output.dummy(input_main_source, fallible=true))
 
