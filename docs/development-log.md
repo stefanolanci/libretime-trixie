@@ -7,6 +7,14 @@ Repository: `https://github.com/stefanolanci/libretime-trixie` — install targe
 
 ---
 
+## 2026-04-21 — Icecast listener stability tuning (burst disabled)
+
+- **`installer/icecast/icecast.xml`:** changed Icecast global listener burst behavior to `burst-on-connect=0` and `burst-size=0` to avoid short repeated startup slices on unstable/mobile paths where clients rapidly reconnect and can replay the same initial buffered segment.
+- **Runtime validation on Jupiter:** after applying the same configuration in production, listener sessions became materially longer in repeated stop/play/pause stress tests (including mobile app and browser players), while the playout chain stayed healthy (`stream_level_probe` remained active without service restarts in the verified window).
+- **`VERSION`:** bumped to `0.1.6 trixie`.
+
+---
+
 ## 2026-04-21 — Liquidsoap 2.3 deprecation cleanup and idempotent web-stream restart
 
 - **`playout/libretime_playout/liquidsoap/templates/entrypoint.liq.j2`:** replaced the legacy `set("path.to.key", value)` calls with the Liquidsoap 2.3 assignment syntax `settings.path.to.key := value` across `log.file.path`, `server.telnet` / `server.telnet.bind_addr` / `server.telnet.port`, `harbor.bind_addrs`, and the `harbor.ssl.*` block. The generated `radio.liq` no longer carries LS 2.3 deprecation warnings at startup.
@@ -87,4 +95,4 @@ Repository: `https://github.com/stefanolanci/libretime-trixie` — install targe
 
 ---
 
-*Last log update: 2026-04-21 (LS 2.3 deprecation cleanup and idempotent web-stream restart).*
+*Last log update: 2026-04-21 (Icecast burst disabled for listener stability, version 0.1.6).*
