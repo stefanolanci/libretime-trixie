@@ -126,6 +126,14 @@
         }
 
         $(document).ready(function() {
+            try {
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage(
+                        { type: "libretime:player-embed-dom-ready" },
+                        window.location.origin
+                    );
+                }
+            } catch (e) {}
             $(".play").click(function() {
                 if ($(this).hasClass("pause")) {
                     html5Player.stop();
@@ -278,7 +286,6 @@
 </head>
 
 <body>
-
     <div id="player" <?php if ($this->player_style == "basic") echo "style='display:block;'";
                         else echo "style='display:none'"; ?>>
         <div class="airtime_player">

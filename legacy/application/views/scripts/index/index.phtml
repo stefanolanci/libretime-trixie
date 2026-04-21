@@ -316,42 +316,66 @@ html {
 </div>
 
 <script type="text/javascript">
+    var preloginButtonsInitDone = false;
+
+    function initPreloginBottomButtons() {
+        if (preloginButtonsInitDone) {
+            return;
+        }
+        var $iframeContents = $("#player_iframe").contents();
+        if (!$iframeContents || $iframeContents.length === 0) {
+            return;
+        }
+        var $bar = $iframeContents.find('.bottom_bar');
+        if ($bar.length === 0) {
+            return;
+        }
+
+        $bar.append("<div class='flex_spacer' data-tab='tab-1'></div>");
+        $bar.append("<div class='schedule_btn button current' data-tab='tab-1'></div>");
+        $bar.append("<div class='about_us_btn button' data-tab='tab-2'></div>");
+
+        <?php
+        if ($this->displayRssTab) { ?>
+            $bar.append("<div class='station_rss_btn button' data-tab='tab-4'></div>");
+        <?php
+        }
+        ?>
+
+        $iframeContents.find('.bottom_bar .button').click(function() {
+            var tab_id = $(this).attr('data-tab');
+
+            $iframeContents.find('.bottom_bar .button').removeClass('current');
+            $('.tab_content').removeClass('current');
+
+            window.scrollTo(0, 0);
+            $(this).addClass('current');
+            $("#" + tab_id).addClass('current');
+        });
+
+        //turn off jplayer if it's playing and someone clicks to play the player bar
+        $iframeContents.find('.play').click(function() {
+            if ($('.jp-play').is(':hidden')) {
+                $('.jp-pause').click();
+            }
+        });
+
+        preloginButtonsInitDone = true;
+    }
+
     $(document).ready(function() {
-
-
+        window.addEventListener("message", function(event) {
+            if (event.origin !== window.location.origin) {
+                return;
+            }
+            if (!event.data || event.data.type !== "libretime:player-embed-dom-ready") {
+                return;
+            }
+            initPreloginBottomButtons();
+        });
 
         $("#player_iframe").load(function() {
-
-            $("#player_iframe").contents().find('.bottom_bar').append("<div class='flex_spacer' data-tab='tab-1'></div>");
-            $("#player_iframe").contents().find('.bottom_bar').append("<div class='schedule_btn button current' data-tab='tab-1'></div>");
-            $("#player_iframe").contents().find('.bottom_bar').append("<div class='about_us_btn button' data-tab='tab-2'></div>");
-
-            <?php
-            // Is there a better way to do this?
-            if ($this->displayRssTab) { ?>
-                $("#player_iframe").contents().find('.bottom_bar').append("<div class='station_rss_btn button' data-tab='tab-4'></div>");
-            <?php
-            }
-            ?>
-
-
-            $("#player_iframe").contents().find('.bottom_bar .button').click(function() {
-                var tab_id = $(this).attr('data-tab');
-
-                $("#player_iframe").contents().find('.bottom_bar .button').removeClass('current');
-                $('.tab_content').removeClass('current');
-
-                window.scrollTo(0, 0);
-                $(this).addClass('current');
-                $("#" + tab_id).addClass('current');
-            });
-
-            //turn off jplayer if it's playing and someone clicks to play the player bar
-            $("#player_iframe").contents().find('.play').click(function() {
-                if ($('.jp-play').is(':hidden')) {
-                    $('.jp-pause').click();
-                }
-            });
+            initPreloginBottomButtons();
         });
 
         // schedule widget tabs
