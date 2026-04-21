@@ -7,6 +7,16 @@ Repository: `https://github.com/stefanolanci/libretime-trixie` — install targe
 
 ---
 
+## 2026-04-21 — Pre-login player buttons: early initialization on embed DOM ready
+
+- **Root cause (runtime-verified):** on the public pre-login page, schedule/about/podcast buttons were appended by the parent page only inside the `#player_iframe.load(...)` callback. The iframe `load` event was delayed by late resource/media completion, so the buttons appeared several seconds after the rest of the page.
+- **`legacy/application/views/scripts/embed/player.phtml`:** the embed now posts a same-origin message (`libretime:player-embed-dom-ready`) to the parent as soon as the iframe document reaches `$(document).ready(...)`.
+- **`legacy/application/views/scripts/index/index.phtml`:** added `initPreloginBottomButtons()` and moved button wiring to an idempotent initializer triggered by the new DOM-ready message, with existing iframe `load` as a safe fallback.
+- **Result:** bottom-bar controls become visible much earlier and no longer depend on full iframe load completion.
+- **`VERSION`:** bumped to `0.1.7 trixie`.
+
+---
+
 ## 2026-04-21 — Icecast listener stability tuning (burst disabled)
 
 - **`installer/icecast/icecast.xml`:** changed Icecast global listener burst behavior to `burst-on-connect=0` and `burst-size=0` to avoid short repeated startup slices on unstable/mobile paths where clients rapidly reconnect and can replay the same initial buffered segment.
@@ -95,4 +105,4 @@ Repository: `https://github.com/stefanolanci/libretime-trixie` — install targe
 
 ---
 
-*Last log update: 2026-04-21 (Icecast burst disabled for listener stability, version 0.1.6).*
+*Last log update: 2026-04-21 (pre-login player buttons initialized on embed DOM ready, version 0.1.7).*
