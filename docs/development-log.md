@@ -7,18 +7,67 @@ Repository: `https://github.com/stefanolanci/libretime-trixie` — install targe
 
 ---
 
+## 2026-04-22 — Installer hardening: upgrade path, idempotency, and satellite scripts
+
+Multi-area cleanup of the root `install` script and of the Python/Bash helpers it invokes. No behavioral change for a successful first install; every change is scoped to make retries, upgrades, and partial-state recoveries predictable.
+
+### Wizard UX polish (`install`)
+
+- Top-of-wizard hint mentions that **`./install --help`** lists every non-interactive flag, so users who outgrow the guided flow know where to look without re-reading the README.
+- **Certbot email** and **fail2ban** prompts are now dynamically pre-filled from `LIBRETIME_CERTBOT_EMAIL` and `LIBRETIME_SETUP_FAIL2BAN` when those variables are set in the environment or `.env`, matching the behavior of the other wizard prompts.
+- The fail2ban prompt line for the web login was reworded to **"LibreTime web application login"** (previously implied a specific reverse-proxy scenario that did not apply to HTTP mode).
+- `bantime` shown in the wizard fail2ban summary and in `installer/fail2ban/jail.d/91-libretime.conf` changed from **600 → 1800 s** (30 min), aligning with what is actually effective against brute-force retries without being too punitive for legitimate lockouts.
+
+### Bash hardening (`install`)
+
+- Added `set -o pipefail` on top of the existing `set -eu`, so pipelines fail loudly when an earlier command errors.
+- `cd "$SCRIPT_DIR"` at the top of the script: every `"${SCRIPT_DIR}/installer/..."` path and every relative reference now resolves against a known CWD, independent of how the user invoked `./install` (e.g. from `~` with an absolute path).
+- `python3` is now installed in the **Prepare** phase, before any helper (`tools/packages.py`) is invoked — previously `python3` was only guaranteed later in the flow.
+
+### Upgrade path (existing `config.yml` detected)
+
+A dedicated upgrade block runs before any destructive action and prints a summary of what is about to happen, then short-circuits on configuration drift:
+
+- **Public URL rehydration.** When `LIBRETIME_PUBLIC_URL` is not passed on the command line during an upgrade, it is read from `/etc/libretime/config.yml` so downstream logic (fail2ban placeholder substitution, HTTPS decision branch, UFW rules) stays aligned with the running system instead of falling back to defaults.
+- **`public_url` mismatch ⇒ hard error.** If the CLI-provided URL differs from the one in `config.yml`, the script refuses to continue with a self-documenting message (`"To change the public URL, edit ${CONFIG_FILEPATH} manually; to keep the current one, omit the positional URL"`). Prevents silent DB/config/URL drift on re-runs.
+- **`--user` mismatch ⇒ hard error.** If `--user` points at a UID that does not own the existing `config.yml`, the script stops and tells the user exactly how to reconcile (either re-run with the detected user, or perform the user migration manually — `chown`, DB ownership, service restarts). Prevents partially-chowned installs.
+- **Pre-upgrade warning summary.** Prints the detected layout (`config_file`, `public_url`, `storage`, `listen_port`, `https_mode`, `setup_icecast`, `setup_fail2ban`) and reminds the operator to keep upgrade flags aligned with the original install; includes a 5-second countdown on interactive TTYs (skipped under CI/pipes so non-interactive upgrades stay non-blocking).
+- **Smarter HTTPS detection in the summary.** Distinguishes `"proxy only (no TLS cert)"` from `"yes (TLS cert present)"` by probing `/etc/letsencrypt/live/<host>/fullchain.pem` when the HTTPS proxy vhost exists — the previous summary called them both "yes" even if Certbot had failed.
+
+### Idempotent credential handling
+
+- **PostgreSQL.** On first-install retries (`is_first_install=true` but the role already exists), `install` now unconditionally runs `ALTER ROLE <user> WITH PASSWORD '<generated>'` so the password in the freshly written `config.yml.tmp` always matches what the database expects. Emits a warning so the admin knows why the password was reset.
+- **RabbitMQ.** Same treatment: if the broker user already exists, `rabbitmqctl change_password` is executed to keep `config.yml` in sync. Prevents the class of failure where a failed first install left credentials out of sync between `config.yml` and the stack.
+
+### Post-upgrade service restart
+
+- After a detected upgrade, the installer now restarts already-active LibreTime units (`libretime-api`, `libretime-playout`, `libretime-liquidsoap`, `libretime-analyzer`, `libretime-worker`) via `service_restart_if_active`, so the newly deployed Python/legacy code is picked up without requiring a separate manual step.
+
+### Satellite scripts (the previous "quality bottleneck")
+
+- **`tools/packages.py`.** Fixed a real determinism bug: `list_packages` used to return `set(sorted(packages))` — `sorted()` returns a list, re-wrapping it in `set()` destroyed the ordering. `apt-get install` was fed a different permutation on every run; install logs were not diffable. Now returns a `List[str]`, sorted, and the CLI wrapper prints it with `"\n".join` / `" ".join` unchanged. Also: the `",".split()` delimiter is now tolerant of extra whitespace (`[d.strip() for d in distributions.split(",")]`), parentheses were added around the `not development and section == DEVELOPMENT_SECTION` clause to make operator precedence explicit, and an `stderr` warning is emitted for `--exclude` sections that are not present in any of the `packages.ini` files scanned.
+- **`installer/icecast/patch_xml_ssl.py`.** Made idempotent. A new `ALREADY_PATCHED_MARKER` (`<ssl-certificate>/etc/icecast2/bundle.pem</ssl-certificate>`) is checked first; if present, the script logs `"already contains bundle.pem ssl-certificate; skipping"` and exits **0** instead of the previous **1** that triggered `warning "could not patch icecast.xml for TLS"` on re-runs. The `<hostname>localhost</hostname>` replacement now degrades gracefully when the hostname has already been customized (informational message, no failure).
+- **`installer/letsencrypt/renew-icecast-bundle.sh`.** Hardened the Certbot deploy hook: `getent group icecast >/dev/null 2>&1 || exit 0` early-exits cleanly when Icecast is no longer installed (so a stale hook cannot fail the entire certificate renewal), and a `logger -t libretime-icecast-bundle` call writes a syslog trail on every skip/success so failed renewals are diagnosable from `/var/log/syslog` without having to dig into Certbot's own log.
+
+### `VERSION`
+
+- Bumped to `0.1.8 trixie`.
+
+---
+
 ## 2026-04-22 — Fail2ban security suite for LibreTime (opt-in)
 
 - **Opt-in installer step.** New `LIBRETIME_SETUP_FAIL2BAN` variable (default `false`), matching `--setup-fail2ban` / `--no-setup-fail2ban` CLI flags, and a wizard prompt at the end of the guided setup (`"Enable fail2ban for LibreTime? [y/N]"`). Non-wizard installs without the flag or the env variable are unchanged — no new services are touched. Handled in `install`.
-- **Three jails, each strictly per-service.** New `installer/fail2ban/jail.d/91-libretime.conf` ships `libretime-harbor`, `icecast-auth`, and `nginx-libretime-login`. Each jail has its own filter, port set, nftables set, and action chain — a ban in one jail never affects sockets of another service. Policy aligned with the stock `sshd` jail (maxretry=5, findtime=3600, bantime=600).
+- **Three jails, each strictly per-service.** New `installer/fail2ban/jail.d/91-libretime.conf` ships `libretime-harbor`, `icecast-auth`, and `nginx-libretime-login`. Each jail has its own filter, port set, nftables set, and action chain — a ban in one jail never affects sockets of another service. Policy aligned with the stock `sshd` jail (maxretry=5, findtime=3600, bantime=1800).
 - **Harbor: file-based jail that sidesteps the Debian 13 systemd backend regression.** Observed behavior with fail2ban 1.1.0 + `python3-systemd` 235 on Trixie: the `systemd` backend silently missed `_SYSTEMD_UNIT=libretime-liquidsoap.service` matches, so the jail never incremented even though `fail2ban-regex` confirmed the pattern. Worked around by writing a dedicated line from `playout/libretime_playout/liquidsoap/ls_script.liq` via `file.write(append=true)` on `/var/log/libretime/harbor-auth.log` (format: `libretime-harbor[<mount>] status=auth_ok|auth_failed ip=<client>`). Filter `installer/fail2ban/filter.d/libretime-harbor.conf` uses `datepattern = {^LN-BEG}`, jail uses `backend=pyinotify`. The write is outside the audio graph (runs in the Harbor handshake thread, not in the DSP thread), `append=true` on a <80 byte line is atomic per `write(2)` below PIPE_BUF, so it has no effect on the audio chain.
 - **Nginx: placeholder-driven port alignment between service and jail.** `@LIBRETIME_NGINX_PORTS@` in the jail template is substituted at install time — in HTTPS mode to `80,443`, in HTTP mode to `${LIBRETIME_LISTEN_PORT}` (default `8080`, overridable via `--listen-port` or env). Previous hard-coded `port = http,https` would have produced an `nftables` rule on ports 80/443 while nginx was actually listening on 8080; the ban was correctly emitted but targeted the wrong socket. The log path is similarly switched between `/var/log/nginx/libretime.access.log` (HTTP) and `/var/log/nginx/libretime-proxy.access.log` (HTTPS).
 - **Nginx log fd reopen after pre-creation.** The installer now runs `nginx -t && systemctl reload nginx` right after pre-creating the LibreTime access log with `install -m 0640 -o www-data -g adm -D /dev/null ...`. Without the reload, nginx kept writing to the orphan inode of the previous file and the jail saw an empty log.
 - **Icecast: reads `/var/log/icecast2/access.log` for HTTP 401 on `/admin/`** via `installer/fail2ban/filter.d/icecast-auth.conf`. Ports `8000,8443`.
 - **`libretime-conntrack-flush` action — scoped socket kill for TCP keep-alive.** New `installer/fail2ban/action.d/libretime-conntrack-flush.conf`. Default nftables/iptables banactions only drop packets with `ct state NEW`, so HTTP keep-alive sockets (and, in theory, long-lived Icecast admin sockets) pre-dating the ban keep flowing. The new action closes those sockets using iproute2 `ss -K` (no extra package; requires `CONFIG_INET_DIAG_DESTROY=y`, default on Debian 13). Important: the `ports="..."` parameter is scoped to the jail's own service ports, so a ban in `nginx-libretime-login` never touches Icecast/Harbor/SSH sockets of the same IP. Attached only to the web/Icecast jails; Harbor does not need it because Liquidsoap opens a new TCP for each auth attempt.
 - **Logrotate for the Harbor auth log.** New `installer/fail2ban/logrotate/libretime-harbor-auth.conf` (weekly, 12 rotations, `compress` + `delaycompress`, `create 0640 libretime adm`). No `postrotate` hook is needed because Liquidsoap opens the file per write (no persistent fd).
-- **End-to-end validation on a clean Debian 13 LAN target (HTTP mode, port 8080), plus a port-swap test at 3345.** Five failed `POST /login` → jail increments → `NOTICE Ban`; materialized `nftables` rule is `tcp dport <configured-port> ip saddr @addr-set-nginx-libretime-login reject with icmp port-unreachable`; `ss -K` closes pre-existing keep-alive sockets scoped to the jail port; browser immediately reports "site unreachable" for new connections; `unbanip` restores normal traffic. Harbor jail exercised on both `main` and `show` mounts, Icecast jail exercised by repeated 401s on `/admin/`.
-- **Commit reference:** `feat(installer): finalize fail2ban security suite (end of development)`.
+- **Functional ban/unban validation (per-jail).** Five failed `POST /login` → `nginx-libretime-login` increments → `NOTICE Ban`; materialized `nftables` rule is `tcp dport <configured-port> ip saddr @addr-set-nginx-libretime-login reject with icmp port-unreachable`; `ss -K` closes pre-existing keep-alive sockets scoped to the jail port; browser immediately reports "site unreachable" for new connections; `unbanip` restores normal traffic. Harbor jail exercised on both `main` (8001) and `show` (8002) mounts, Icecast jail exercised by repeated 401s on `/admin/`. Port-swap sanity run at 3345 confirmed the `@LIBRETIME_NGINX_PORTS@` substitution tracks the actual listen port.
+- **End-to-end wizard install on a clean Debian 13 Trixie snapshot.** `./install --wizard` answered **`y`** at the fail2ban prompt materializes `/etc/fail2ban/filter.d/{libretime-harbor,icecast-auth,nginx-libretime-login}.conf`, `/etc/fail2ban/action.d/libretime-conntrack-flush.conf`, `/etc/fail2ban/jail.d/91-libretime.conf` (placeholders resolved), `/etc/logrotate.d/libretime-harbor-auth`, and pre-creates `/var/log/libretime/harbor-auth.log` (`libretime:adm 0640`) plus the nginx access log with the post-`install` nginx reload. `fail2ban.service` starts clean with all four jails active (`sshd, libretime-harbor, icecast-auth, nginx-libretime-login`). Ban/unban tests re-executed on the freshly wizarded target pass identically to the in-place run.
+- **Commit reference:** `feat(installer): finalize fail2ban security suite (end of development)` (code); wizard acceptance run recorded 2026-04-22 on LAN Debian 13 Trixie target.
 
 ---
 
@@ -120,4 +169,4 @@ Repository: `https://github.com/stefanolanci/libretime-trixie` — install targe
 
 ---
 
-*Last log update: 2026-04-22 (opt-in fail2ban security suite for Harbor, Icecast, and LibreTime web login).*
+*Last log update: 2026-04-22 (installer hardening: upgrade path, idempotent credentials, and satellite-script determinism — on top of the opt-in fail2ban security suite landed earlier the same day).*

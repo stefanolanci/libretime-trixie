@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Enable TLS in icecast.xml (SSL listen socket + PEM bundle) and set <hostname>."""
+"""Enable TLS in icecast.xml (SSL listen socket + PEM bundle) and set <hostname>.
+
+Idempotent: if the file has already been patched (bundle.pem + SSL listen
+socket present), re-running the script leaves it untouched and returns 0.
+"""
 from __future__ import annotations
 
 import pathlib
@@ -17,6 +21,8 @@ SSL_CERT_COMMENT = """        <!-- The certificate file needs to contain both pu
         <ssl-certificate>/usr/share/icecast2/icecast.pem</ssl-certificate>
         -->"""
 
+ALREADY_PATCHED_MARKER = "<ssl-certificate>/etc/icecast2/bundle.pem</ssl-certificate>"
+
 
 def main() -> int:
     if len(sys.argv) != 4:
@@ -27,7 +33,22 @@ def main() -> int:
     ssl_port = sys.argv[3]
     text = path.read_text(encoding="utf-8")
 
-    text = text.replace("<hostname>localhost</hostname>", f"<hostname>{hostname}</hostname>", 1)
+    if ALREADY_PATCHED_MARKER in text:
+        print(
+            f"patch_xml_ssl: {path} already contains bundle.pem ssl-certificate; skipping",
+            file=sys.stderr,
+        )
+        return 0
+
+    host_needle = "<hostname>localhost</hostname>"
+    if host_needle in text:
+        text = text.replace(host_needle, f"<hostname>{hostname}</hostname>", 1)
+    else:
+        print(
+            "patch_xml_ssl: '<hostname>localhost</hostname>' not found; "
+            "leaving existing <hostname> value untouched",
+            file=sys.stderr,
+        )
 
     ssl_socket = f"""    <listen-socket>
         <port>{ssl_port}</port>
