@@ -12,36 +12,43 @@ Repository: `https://github.com/stefanolanci/libretime-trixie` — install targe
 This repository is the **libretime-trixie** distribution: LibreTime packaged and tested for **Debian 13 (Trixie)**.  
 Upstream code lineage: [LibreTime](https://github.com/libretime/libretime) (AGPL-3.0). This fork’s **release identity** is independent of upstream’s 4.x setuptools labels.
 
-**Semantic version (one triple):** **Major.Minor.Patch** (e.g. `0.1.8`). The same triple appears in **`VERSION`**, **`setup.py`**, and the **Git tag body** before `-trixie`.
+**Semantic version (one triple):** **Major.Minor.Patch** (e.g. `0.1.9`). The same triple appears in **`VERSION`**, **`setup.py`**, and the **Git tag** before `-trixie`.
 
 | Layer | Format | Example (current) |
 |--------|--------|---------------------|
-| **Git tag (on GitHub for this repo)** | Major.Minor.Patch + `-trixie` (**no** leading `v`) | **`0.1.8-trixie`** |
-| **Root `VERSION`** | Major.Minor.Patch + space + `trixie` | **`0.1.8 trixie`** |
-| **Python `setup.py`** | `version="Major.Minor.Patch"` | **`0.1.8`** |
+| **Git tag (on GitHub for this repo)** | `v` + Major.Minor.Patch + `-trixie` | **`v0.1.9-trixie`** |
+| **Root `VERSION`** | Major.Minor.Patch + space + `trixie` | **`0.1.9 trixie`** |
+| **Python `setup.py`** | `version="Major.Minor.Patch"` | **`0.1.9`** |
 
-**GitHub repository rules** reject tag refs of the form **`v…-trixie`** (leading `v` + semver + `-trixie`). The **published ref** is therefore **`M.m.p-trixie`** without `v`; the [release title](https://github.com/stefanolanci/libretime-trixie/releases) stays **libretime-trixie v0.1.8-trixie** for readability. One triple ⇒ **one** release per line.
+Public history and release notes live **only** in this file ([**development-log**](development-log.md)) — there is no separate root changelog. [GitHub Releases](https://github.com/stefanolanci/libretime-trixie/releases) use the same **`vM.m.p-trixie`** naming for readability. One triple ⇒ **one** annotated tag and **one** release per bump.
 
 ### Rules
 
-1. **New fork release** → bump **Major**, **Minor**, or **Patch** once; update **`VERSION`**, all **`setup.py`** `version=`, **`CHANGELOG.md`**, then tag **`M.m.p-trixie`** (example **`0.1.8-trixie`**) and publish **one** GitHub release for that tag.
+1. **New fork release** → bump **Major**, **Minor**, or **Patch** once; update **`VERSION`**, all **`setup.py`** `version=`, append a dated section **here**, then tag **`vM.m.p-trixie`** (example **`v0.1.9-trixie`**) and publish **one** GitHub release for that tag.
 2. **`tools/version.sh`** does **not** overwrite **`VERSION`** when the first line already matches `^[0-9]+\.[0-9]+\.[0-9]+` (see script comments).
 3. **Legacy “What’s new”** uses **`LIBRETIME_WHATS_NEW_URL`** / **`LIBRETIME_UPDATE_FEED`** in `legacy/application/configs/constants.php` — they must point at **this fork’s** Releases, not upstream’s.
 
 ### Check out a known release
 
 ```bash
-git fetch origin tag 0.1.8-trixie
-git checkout 0.1.8-trixie   # detached HEAD; fine for installs
+git fetch origin tag v0.1.9-trixie
+git checkout v0.1.9-trixie   # detached HEAD; fine for installs
 # or stay on main after a release merge:
 git checkout main && git pull
 ```
 
 ---
 
+## 2026-04-22 — Release **v0.1.9-trixie** (docs + packaging)
+
+- Bumped fork **Major.Minor.Patch** to **0.1.9**: root **`VERSION`** and all component **`setup.py`** `version=` entries.
+- Removed root **`CHANGELOG.md`**; user-facing notes remain in this development log and on GitHub Releases.
+
+---
+
 ## 2026-04-22 — Docs: versioning merged into this file
 
-- Removed redundant root **`VERSIONING.md`**. The **Release identity and versioning** section above is the only place for the tag / `VERSION` / setuptools table and rules; **README** and **CHANGELOG** now deep-link to it.
+- Removed redundant root **`VERSIONING.md`**. The **Release identity and versioning** section above is the only place for the tag / `VERSION` / setuptools table and rules; **README** deep-links to it.
 
 ---
 
@@ -50,7 +57,7 @@ git checkout main && git pull
 - **Single reference for tag / `VERSION` / setuptools:** section **Release identity and versioning** at the top of this file (no separate `VERSIONING.md` in repo root).
 - **Forge identity:** Git annotated tag **`v0.1.8-trixie`**, root **`VERSION`** remains **`0.1.8 trixie`** (semver + space + codename; `tools/version.sh` unchanged).
 - **Python packages:** all component **`setup.py`** files now declare **`0.1.8`** (replacing inherited **`4.5.0`** from upstream metadata) and **`url` / `project_urls`** → `https://github.com/stefanolanci/libretime-trixie` so `pip`/wheel metadata matches this fork.
-- **User-facing changelog:** root **`CHANGELOG.md`** indexes **`0.1.8-trixie`**; legacy **`LIBRETIME_WHATS_NEW_URL`** / **`LIBRETIME_UPDATE_FEED`** and **`config-check.php`** release-notes link target **this fork’s** GitHub Releases (not upstream’s).
+- **User-facing changelog:** at this release a root **`CHANGELOG.md`** was added (later **removed in v0.1.9-trixie** in favor of this file only). Legacy **`LIBRETIME_WHATS_NEW_URL`** / **`LIBRETIME_UPDATE_FEED`** and **`config-check.php`** release-notes link target **this fork’s** GitHub Releases (not upstream’s).
 
 ---
 
