@@ -1,6 +1,6 @@
 # LibreTime (Debian Trixie)
 
-**Distribution:** [libretime-trixie](https://github.com/stefanolanci/libretime-trixie) **v0.1.8-trixie** — installer label in root `VERSION` is `0.1.8 trixie`; Python components ship setuptools **0.1.8** for this fork (see [CHANGELOG.md](CHANGELOG.md)).
+**Distribution:** [libretime-trixie](https://github.com/stefanolanci/libretime-trixie) **v0.1.8-trixie**. Canonical mapping of tag / `VERSION` / Python / docs: **[VERSIONING.md](VERSIONING.md)**. User-facing notes: [CHANGELOG.md](CHANGELOG.md).
 
 Native radio automation for **Debian 13 (Trixie)**. Installation uses the root `install` script (systemd units, no containers).
 
@@ -12,6 +12,7 @@ This tree targets **Trixie** specifically (PHP **8.4**, current Python, **Liquid
 
 ## Contents
 
+- [Versioning (tag, VERSION, Python)](VERSIONING.md)
 - [Changelog](CHANGELOG.md)
 - [Requirements](#requirements)
 - [Get the source](#get-the-source)
@@ -81,7 +82,7 @@ Optional **`.env`** in the same directory as `install`: the script sources it so
 
 ### What the published tree must contain for `./install`
 
-From a **clean clone** of this fork, **`./install`** expects **`installer/`** (including **`config.yml`** template, **`nginx/`**, **`icecast/`**, **`letsencrypt/`**, **`uninstall-libretime.sh`**, **`systemd/libretime.target`**), **`tools/packages.py`**, **`tools/version.sh`**, and the application directories **`shared/`**, **`api-client/`**, **`api/`**, **`playout/`**, **`analyzer/`**, **`worker/`**, **`legacy/`**, plus root **`VERSION`**, **`CHANGELOG.md`**, and **`docs/development-log.md`**. The published repository includes **only** those two paths under **`tools/`**; optional local helpers (deploy scripts, diagnostics under **`scripts/`**, etc.) are **not** shipped on GitHub—add them locally if you use them. They are **not** invoked by `./install`.
+From a **clean clone** of this fork, **`./install`** expects **`installer/`** (including **`config.yml`** template, **`nginx/`**, **`icecast/`**, **`letsencrypt/`**, **`uninstall-libretime.sh`**, **`systemd/libretime.target`**), **`tools/packages.py`**, **`tools/version.sh`**, and the application directories **`shared/`**, **`api-client/`**, **`api/`**, **`playout/`**, **`analyzer/`**, **`worker/`**, **`legacy/`**, plus root **`VERSION`**, **`VERSIONING.md`**, **`CHANGELOG.md`**, and **`docs/development-log.md`**. The published repository includes **only** those two paths under **`tools/`**; optional local helpers (deploy scripts, diagnostics under **`scripts/`**, etc.) are **not** shipped on GitHub—add them locally if you use them. They are **not** invoked by `./install`.
 
 ---
 

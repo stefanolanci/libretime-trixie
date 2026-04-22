@@ -1,6 +1,7 @@
 # Changelog
 
 Notable **libretime-trixie** releases. Lineage: [LibreTime](https://github.com/libretime/libretime) (AGPL-3.0).  
+**How tag / `VERSION` / Python versions relate:** [VERSIONING.md](VERSIONING.md).  
 Detailed engineering notes: [docs/development-log.md](docs/development-log.md).
 
 ## [0.1.8-trixie] — 2026-04-22
