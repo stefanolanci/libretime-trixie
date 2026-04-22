@@ -73,7 +73,8 @@ Optional **`.env`** in the same directory as `install`: the script sources it so
 7. **Nginx** — Deploys **`installer/nginx/libretime.conf`** (internal listen **`--listen-port`**, default **8080**), disables the default site on first install.
 8. **HTTPS (first install only)** — When `public_url` is **`https://…`** and **`LIBRETIME_HTTPS_AUTO`** is true (default): installs **Certbot** + **python3-certbot-nginx**, deploys **`installer/nginx/libretime-https-proxy.conf`**, runs **certbot --nginx**, optionally builds Icecast **`bundle.pem`**, runs **`installer/icecast/patch_xml_ssl.py`** and **`installer/config/patch_icecast_public_urls.py`**, installs **`installer/letsencrypt/renew-icecast-bundle.sh`** as a deploy hook. On failure, prints a manual **certbot** hint.
 9. **UFW** — If **ufw** is active, opens ports for the chosen mode (80/443 for HTTPS automation, listen port for HTTP, Icecast/Harbor ports when Icecast is enabled).
-10. **Finalize** — Moves the temp config to **`/etc/libretime/config.yml`**, enables **nginx**, **`php*-fpm`**, **`libretime.target`**, reloads nginx/php-fpm.
+10. **Fail2ban (opt-in)** — When **`LIBRETIME_SETUP_FAIL2BAN=true`** (or **`--setup-fail2ban`**, or **"y"** at the wizard prompt), installs **fail2ban** and deploys three LibreTime jails — **`libretime-harbor`** (reads a dedicated Liquidsoap-written log), **`icecast-auth`** (Icecast `/admin/` HTTP 401), **`nginx-libretime-login`** (LibreTime web `/login` brute-force) — plus a scoped **`libretime-conntrack-flush`** action that closes pre-existing TCP keep-alive sockets of the banned IP on the same ports, and a logrotate entry for `/var/log/libretime/harbor-auth.log`. Policy matches the stock `sshd` jail (`maxretry=5`, `findtime=3600`, `bantime=600`). Default is **disabled**; upgrades without the flag leave fail2ban untouched.
+11. **Finalize** — Moves the temp config to **`/etc/libretime/config.yml`**, enables **nginx**, **`php*-fpm`**, **`libretime.target`**, reloads nginx/php-fpm.
 
 ### What the published tree must contain for `./install`
 
@@ -161,6 +162,7 @@ Run **`./install --help`** for the full list. Common flags:
 | `--storage-path PATH` / `-s` | Media storage path (default `/srv/libretime`). |
 | `--no-setup-icecast` | Skip Icecast package and config. |
 | `--no-setup-postgresql` / `--no-setup-rabbitmq` | Skip those services (you must configure them yourself). |
+| `--setup-fail2ban` / `--no-setup-fail2ban` | Install (or skip) the opt-in fail2ban jails for Harbor, Icecast, and LibreTime web login. Also settable via `LIBRETIME_SETUP_FAIL2BAN=true` or the wizard prompt. Default: **disabled**. |
 
 You can persist settings in a **`.env`** file next to `install`; flags override environment variables.
 
@@ -270,6 +272,7 @@ Targeted fixes for **Debian 13 / Liquidsoap 2.3** and races between UI, API, and
 - **Liquidsoap cleanup:** dead functions (`transition_default`, `to_live`, `cross_http`, `http_fallback`) removed from `ls_lib.liq`; `make_ouput_` typo corrected to `make_output_` in both `ls_lib.liq` and the Jinja output template.
 - **Python modernization:** `datetime.utcnow()` replaced with `datetime.now(timezone.utc)` across the playout package; `UnboundLocalError` risk fixed in analyzer `message_listener.py`.
 - **Install robustness:** `--wizard` validates TTY, blocks upgrade usage, and rejects combined positional URL; flags requiring arguments now fail with a clear message instead of a cryptic `shift` error; first install without a URL or `--wizard` is now blocked.
+- **Opt-in fail2ban security suite:** wizard step, CLI flags (`--setup-fail2ban` / `--no-setup-fail2ban`), and `LIBRETIME_SETUP_FAIL2BAN` env var deploy three independent jails (`libretime-harbor`, `icecast-auth`, `nginx-libretime-login`) aligned with the stock `sshd` policy (`maxretry=5`, `findtime=3600`, `bantime=600`). Harbor auth is logged via `ls_script.liq` into a dedicated file so the jail is immune to the fail2ban 1.1.0 + `python3-systemd` systemd-backend regression on Debian 13. The nginx jail port is driven by a placeholder substituted at install time (HTTP mode: `LIBRETIME_LISTEN_PORT`; HTTPS mode: `80,443`), so the `nftables` rule always targets the real service socket. A companion `libretime-conntrack-flush` action closes ESTABLISHED TCP keep-alive sockets of the banned IP, strictly scoped to the jail's own ports, so browsers cannot keep hitting `/login` over pre-existing connections and bans stay per-service. Logrotate entry for `/var/log/libretime/harbor-auth.log` (weekly × 12, compress + delaycompress). Default: **disabled**.
 - **Version label:** root `VERSION` file (e.g. `0.0.5 trixie`); `tools/version.sh` does **not** overwrite it when it already contains a semver.
 
 A chronological **development log** (English) is maintained in [`docs/development-log.md`](docs/development-log.md); update it when you land meaningful fork changes.

@@ -7,6 +7,21 @@ Repository: `https://github.com/stefanolanci/libretime-trixie` — install targe
 
 ---
 
+## 2026-04-22 — Fail2ban security suite for LibreTime (opt-in)
+
+- **Opt-in installer step.** New `LIBRETIME_SETUP_FAIL2BAN` variable (default `false`), matching `--setup-fail2ban` / `--no-setup-fail2ban` CLI flags, and a wizard prompt at the end of the guided setup (`"Enable fail2ban for LibreTime? [y/N]"`). Non-wizard installs without the flag or the env variable are unchanged — no new services are touched. Handled in `install`.
+- **Three jails, each strictly per-service.** New `installer/fail2ban/jail.d/91-libretime.conf` ships `libretime-harbor`, `icecast-auth`, and `nginx-libretime-login`. Each jail has its own filter, port set, nftables set, and action chain — a ban in one jail never affects sockets of another service. Policy aligned with the stock `sshd` jail (maxretry=5, findtime=3600, bantime=600).
+- **Harbor: file-based jail that sidesteps the Debian 13 systemd backend regression.** Observed behavior with fail2ban 1.1.0 + `python3-systemd` 235 on Trixie: the `systemd` backend silently missed `_SYSTEMD_UNIT=libretime-liquidsoap.service` matches, so the jail never incremented even though `fail2ban-regex` confirmed the pattern. Worked around by writing a dedicated line from `playout/libretime_playout/liquidsoap/ls_script.liq` via `file.write(append=true)` on `/var/log/libretime/harbor-auth.log` (format: `libretime-harbor[<mount>] status=auth_ok|auth_failed ip=<client>`). Filter `installer/fail2ban/filter.d/libretime-harbor.conf` uses `datepattern = {^LN-BEG}`, jail uses `backend=pyinotify`. The write is outside the audio graph (runs in the Harbor handshake thread, not in the DSP thread), `append=true` on a <80 byte line is atomic per `write(2)` below PIPE_BUF, so it has no effect on the audio chain.
+- **Nginx: placeholder-driven port alignment between service and jail.** `@LIBRETIME_NGINX_PORTS@` in the jail template is substituted at install time — in HTTPS mode to `80,443`, in HTTP mode to `${LIBRETIME_LISTEN_PORT}` (default `8080`, overridable via `--listen-port` or env). Previous hard-coded `port = http,https` would have produced an `nftables` rule on ports 80/443 while nginx was actually listening on 8080; the ban was correctly emitted but targeted the wrong socket. The log path is similarly switched between `/var/log/nginx/libretime.access.log` (HTTP) and `/var/log/nginx/libretime-proxy.access.log` (HTTPS).
+- **Nginx log fd reopen after pre-creation.** The installer now runs `nginx -t && systemctl reload nginx` right after pre-creating the LibreTime access log with `install -m 0640 -o www-data -g adm -D /dev/null ...`. Without the reload, nginx kept writing to the orphan inode of the previous file and the jail saw an empty log.
+- **Icecast: reads `/var/log/icecast2/access.log` for HTTP 401 on `/admin/`** via `installer/fail2ban/filter.d/icecast-auth.conf`. Ports `8000,8443`.
+- **`libretime-conntrack-flush` action — scoped socket kill for TCP keep-alive.** New `installer/fail2ban/action.d/libretime-conntrack-flush.conf`. Default nftables/iptables banactions only drop packets with `ct state NEW`, so HTTP keep-alive sockets (and, in theory, long-lived Icecast admin sockets) pre-dating the ban keep flowing. The new action closes those sockets using iproute2 `ss -K` (no extra package; requires `CONFIG_INET_DIAG_DESTROY=y`, default on Debian 13). Important: the `ports="..."` parameter is scoped to the jail's own service ports, so a ban in `nginx-libretime-login` never touches Icecast/Harbor/SSH sockets of the same IP. Attached only to the web/Icecast jails; Harbor does not need it because Liquidsoap opens a new TCP for each auth attempt.
+- **Logrotate for the Harbor auth log.** New `installer/fail2ban/logrotate/libretime-harbor-auth.conf` (weekly, 12 rotations, `compress` + `delaycompress`, `create 0640 libretime adm`). No `postrotate` hook is needed because Liquidsoap opens the file per write (no persistent fd).
+- **End-to-end validation on a clean Debian 13 LAN target (HTTP mode, port 8080), plus a port-swap test at 3345.** Five failed `POST /login` → jail increments → `NOTICE Ban`; materialized `nftables` rule is `tcp dport <configured-port> ip saddr @addr-set-nginx-libretime-login reject with icmp port-unreachable`; `ss -K` closes pre-existing keep-alive sockets scoped to the jail port; browser immediately reports "site unreachable" for new connections; `unbanip` restores normal traffic. Harbor jail exercised on both `main` and `show` mounts, Icecast jail exercised by repeated 401s on `/admin/`.
+- **Commit reference:** `feat(installer): finalize fail2ban security suite (end of development)`.
+
+---
+
 ## 2026-04-21 — Pre-login player buttons: early initialization on embed DOM ready
 
 - **Root cause (runtime-verified):** on the public pre-login page, schedule/about/podcast buttons were appended by the parent page only inside the `#player_iframe.load(...)` callback. The iframe `load` event was delayed by late resource/media completion, so the buttons appeared several seconds after the rest of the page.
@@ -105,4 +120,4 @@ Repository: `https://github.com/stefanolanci/libretime-trixie` — install targe
 
 ---
 
-*Last log update: 2026-04-21 (pre-login player buttons initialized on embed DOM ready, version 0.1.7).*
+*Last log update: 2026-04-22 (opt-in fail2ban security suite for Harbor, Icecast, and LibreTime web login).*
