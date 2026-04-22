@@ -12,29 +12,27 @@ Repository: `https://github.com/stefanolanci/libretime-trixie` — install targe
 This repository is the **libretime-trixie** distribution: LibreTime packaged and tested for **Debian 13 (Trixie)**.  
 Upstream code lineage: [LibreTime](https://github.com/libretime/libretime) (AGPL-3.0). This fork’s **release identity** is independent of upstream’s 4.x setuptools labels.
 
-### At a glance
+**Semantic version (one triple):** **Major.Minor.Patch** (e.g. `0.1.8`). For each release the same triple appears everywhere:
 
-| What | Value | Where |
-|------|--------|--------|
-| **Distribution name** | libretime-trixie | README, Git remote URL |
-| **Git release tag (GitHub)** | `trixie-0.1.8` | `git tag`, [GitHub Releases](https://github.com/stefanolanci/libretime-trixie/releases) — see **rule 4** below (the literal `v0.1.8-trixie` ref cannot be (re)created on GitHub for this repo). |
-| **Installer / OS label** | `0.1.8 trixie` (semver, space, codename) | Root file **`VERSION`**; printed by `./install`; copied into `legacy/` during install |
-| **Python packages (setuptools)** | `0.1.8` | `shared/setup.py`, `api/setup.py`, `api-client/setup.py`, `playout/setup.py`, `analyzer/setup.py`, `worker/setup.py` |
-| **User-facing changelog** | [CHANGELOG.md](../CHANGELOG.md) | Release notes index |
-| **Engineering diary** | *this file* (sections below) | Maintainer-oriented detail |
+| Layer | Format | Example (current) |
+|--------|--------|---------------------|
+| **Git tag** | `v` + Major.Minor.Patch + `-trixie` | **`v0.1.8-trixie`** |
+| **Root `VERSION`** | Major.Minor.Patch + space + `trixie` | **`0.1.8 trixie`** |
+| **Python `setup.py`** | `version="Major.Minor.Patch"` | **`0.1.8`** |
+
+There is **one** published release line per triple on GitHub: tag and release name **`v0.1.8-trixie`**, [Releases](https://github.com/stefanolanci/libretime-trixie/releases).
 
 ### Rules
 
-1. **New fork release** → bump root **`VERSION`** (first line), bump all **`setup.py`** `version=`, add a **`CHANGELOG.md`** section, tag **`v<semver>-trixie`**, push tag + `main`.
+1. **New fork release** → bump **Major**, **Minor**, or **Patch** once; update **`VERSION`**, all **`setup.py`** `version=`, **`CHANGELOG.md`**, then tag **`v<same-triple>-trixie`** and publish **one** GitHub release for that tag.
 2. **`tools/version.sh`** does **not** overwrite **`VERSION`** when the first line already matches `^[0-9]+\.[0-9]+\.[0-9]+` (see script comments).
 3. **Legacy “What’s new”** uses **`LIBRETIME_WHATS_NEW_URL`** / **`LIBRETIME_UPDATE_FEED`** in `legacy/application/configs/constants.php` — they must point at **this fork’s** Releases, not upstream’s.
-4. **GitHub tag naming:** this repository’s **rules / immutable-release** settings currently **reject** creating the ref **`v0.1.8-trixie`** (and similarly named variants that were already published once). The **2026-04-22** release therefore uses the tag **`trixie-0.1.8`** while the product line remains **0.1.8 trixie** (`VERSION`). To restore a `v…-trixie` tag pattern, adjust the rules under **GitHub → Repository → Rules** (or organization rules) then recreate the desired tag.
 
 ### Check out a known release
 
 ```bash
-git fetch origin tag trixie-0.1.8
-git checkout trixie-0.1.8   # detached HEAD; fine for installs
+git fetch origin tag v0.1.8-trixie
+git checkout v0.1.8-trixie   # detached HEAD; fine for installs
 # or stay on main after a release merge:
 git checkout main && git pull
 ```
@@ -44,13 +42,6 @@ git checkout main && git pull
 ## 2026-04-22 — Docs: versioning merged into this file
 
 - Removed redundant root **`VERSIONING.md`**. The **Release identity and versioning** section above is the only place for the tag / `VERSION` / setuptools table and rules; **README** and **CHANGELOG** now deep-link to it.
-
----
-
-## 2026-04-22 — GitHub releases: drop v0.1.7-trixie; publish 0.1.8 line
-
-- Removed the old **GitHub release + tag `v0.1.7-trixie`**.
-- Attempts to publish **`v0.1.8-trixie`** (and a retried **`v0.1.8.1-trixie`**) are **rejected** by the repository’s **immutable-release / tag-creation rules** (`tag_name was used by an immutable release`, `Cannot create ref due to creations being restricted`). The active GitHub release for this codebase is therefore tagged **`trixie-0.1.8`**, with release title **libretime-trixie v0.1.8-trixie**, targeting the same **`main`** commit as **`0.1.8 trixie`** in **`VERSION`**. Relax or adjust **GitHub → Rules** if you need the literal **`v0.1.8-trixie`** ref again.
 
 ---
 
