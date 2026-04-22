@@ -12,27 +12,27 @@ Repository: `https://github.com/stefanolanci/libretime-trixie` — install targe
 This repository is the **libretime-trixie** distribution: LibreTime packaged and tested for **Debian 13 (Trixie)**.  
 Upstream code lineage: [LibreTime](https://github.com/libretime/libretime) (AGPL-3.0). This fork’s **release identity** is independent of upstream’s 4.x setuptools labels.
 
-**Semantic version (one triple):** **Major.Minor.Patch** (e.g. `0.1.8`). For each release the same triple appears everywhere:
+**Semantic version (one triple):** **Major.Minor.Patch** (e.g. `0.1.8`). The same triple appears in **`VERSION`**, **`setup.py`**, and the **Git tag body** before `-trixie`.
 
 | Layer | Format | Example (current) |
 |--------|--------|---------------------|
-| **Git tag** | `v` + Major.Minor.Patch + `-trixie` | **`v0.1.8-trixie`** |
+| **Git tag (on GitHub for this repo)** | Major.Minor.Patch + `-trixie` (**no** leading `v`) | **`0.1.8-trixie`** |
 | **Root `VERSION`** | Major.Minor.Patch + space + `trixie` | **`0.1.8 trixie`** |
 | **Python `setup.py`** | `version="Major.Minor.Patch"` | **`0.1.8`** |
 
-There is **one** published release line per triple on GitHub: tag and release name **`v0.1.8-trixie`**, [Releases](https://github.com/stefanolanci/libretime-trixie/releases).
+**GitHub repository rules** reject tag refs of the form **`v…-trixie`** (leading `v` + semver + `-trixie`). The **published ref** is therefore **`M.m.p-trixie`** without `v`; the [release title](https://github.com/stefanolanci/libretime-trixie/releases) stays **libretime-trixie v0.1.8-trixie** for readability. One triple ⇒ **one** release per line.
 
 ### Rules
 
-1. **New fork release** → bump **Major**, **Minor**, or **Patch** once; update **`VERSION`**, all **`setup.py`** `version=`, **`CHANGELOG.md`**, then tag **`v<same-triple>-trixie`** and publish **one** GitHub release for that tag.
+1. **New fork release** → bump **Major**, **Minor**, or **Patch** once; update **`VERSION`**, all **`setup.py`** `version=`, **`CHANGELOG.md`**, then tag **`M.m.p-trixie`** (example **`0.1.8-trixie`**) and publish **one** GitHub release for that tag.
 2. **`tools/version.sh`** does **not** overwrite **`VERSION`** when the first line already matches `^[0-9]+\.[0-9]+\.[0-9]+` (see script comments).
 3. **Legacy “What’s new”** uses **`LIBRETIME_WHATS_NEW_URL`** / **`LIBRETIME_UPDATE_FEED`** in `legacy/application/configs/constants.php` — they must point at **this fork’s** Releases, not upstream’s.
 
 ### Check out a known release
 
 ```bash
-git fetch origin tag v0.1.8-trixie
-git checkout v0.1.8-trixie   # detached HEAD; fine for installs
+git fetch origin tag 0.1.8-trixie
+git checkout 0.1.8-trixie   # detached HEAD; fine for installs
 # or stay on main after a release merge:
 git checkout main && git pull
 ```

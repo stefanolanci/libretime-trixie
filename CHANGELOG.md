@@ -8,7 +8,7 @@ Detailed engineering notes: [docs/development-log.md](docs/development-log.md).
 
 ### Versioning (this release)
 
-- **Single triple `0.1.8`:** Git tag and GitHub release **`v0.1.8-trixie`**, root **`VERSION`** **`0.1.8 trixie`**, all Python **`setup.py`** **`0.1.8`**, project URL [stefanolanci/libretime-trixie](https://github.com/stefanolanci/libretime-trixie). Rules: **[docs/development-log.md](docs/development-log.md#release-identity-and-versioning)**.
+- **Single triple `0.1.8`:** Git tag and GitHub release ref **`0.1.8-trixie`**, root **`VERSION`** **`0.1.8 trixie`**, all Python **`setup.py`** **`0.1.8`**, project URL [stefanolanci/libretime-trixie](https://github.com/stefanolanci/libretime-trixie). Rules: **[docs/development-log.md](docs/development-log.md#release-identity-and-versioning)**.
 - Legacy UI “what’s new” / update feed URLs point at **this fork’s** GitHub Releases so they match the installed tree.
 
 ### Installer and uninstaller (since prior tag)
