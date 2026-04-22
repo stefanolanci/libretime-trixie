@@ -132,6 +132,17 @@ def make_input_auth_handler(input_name)
         log("user '#{args.user}' connected from #{args.address}", label="#{input_name}_input")
 
         ret = process.test("libretime-playout-notify live-auth '#{input_name}' '#{args.user}' '#{args.password}'")
+        # fail2ban-friendly file log (one line per auth outcome, IP last).
+        # Used by the libretime-harbor jail (backend=polling on logpath).
+        # Format intentionally compact: no timestamp in the line — fail2ban uses
+        # file write time via {^LN-BEG} datepattern in the filter.
+        status = if ret then "auth_ok" else "auth_failed" end
+        ignore(file.write(
+            data="libretime-harbor[#{input_name}] status=#{status} ip=#{args.address}\n",
+            append=true,
+            perms=0o640,
+            "/var/log/libretime/harbor-auth.log"
+        ))
         if ret then
             log("user '#{args.user}' authenticated from #{args.address}", label="#{input_name}_input")
         else

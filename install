@@ -73,6 +73,9 @@ Options:
   --no-setup-icecast            Do not setup Icecast.
   --no-setup-postgresql         Do not setup Postgresql.
   --no-setup-rabbitmq           Do not setup RabbitMQ.
+  --setup-fail2ban              Install LibreTime fail2ban filters and jails
+                                (Harbor, Icecast admin, nginx login).
+  --no-setup-fail2ban           Do not configure fail2ban (default).
 
   --no-https-auto               Do not run Certbot / reverse proxy / Icecast TLS,
                                 even if public_url starts with https://
@@ -251,6 +254,27 @@ run_install_wizard() {
     info "HTTPS mode — public Nginx, Certbot, and (if Icecast is enabled) Icecast TLS will be configured."
   fi
 
+  printf "\n%b\n" "${cyan}Optional: fail2ban protection${reset}"
+  printf "Install LibreTime fail2ban filters and jails for:\n"
+  printf "  - Harbor live inputs (ports 8001/8002)\n"
+  printf "  - Icecast admin (ports 8000/8443)\n"
+  printf "  - LibreTime web login (HTTPS reverse proxy access log)\n"
+  printf "Policy: maxretry=5, findtime=3600 (1h), bantime=600 (10 minutes).\n"
+  local f2b=""
+  while [[ ! "$f2b" =~ ^[yYnN]$ ]]; do
+    printf "Enable fail2ban for LibreTime? [y/N]: " >"$wiz_tty"
+    read -r f2b <"$wiz_tty" || true
+    f2b="${f2b//[[:space:]]/}"
+    [[ -z "$f2b" ]] && f2b="n"
+  done
+  if [[ "$f2b" =~ ^[yY]$ ]]; then
+    LIBRETIME_SETUP_FAIL2BAN=true
+    info "fail2ban jails for LibreTime will be installed."
+  else
+    LIBRETIME_SETUP_FAIL2BAN=false
+    info "fail2ban setup skipped (can be enabled later with --setup-fail2ban)."
+  fi
+
   printf "\n%b\n" "${cyan}Summary:${reset}"
   printf "  Public URL:        ${yellow}%s${reset}\n" "$LIBRETIME_PUBLIC_URL"
   printf "  Internal app port: ${yellow}%s${reset} (traffic to local Nginx only)\n" "$LIBRETIME_LISTEN_PORT"
@@ -258,6 +282,7 @@ run_install_wizard() {
     printf "  Certbot email:     ${yellow}%s${reset}\n" "${LIBRETIME_CERTBOT_EMAIL:-<none>}"
     printf "  HTTPS automation:  ${yellow}%s${reset}\n" "$LIBRETIME_HTTPS_AUTO"
   fi
+  printf "  fail2ban jails:    ${yellow}%s${reset}\n" "$LIBRETIME_SETUP_FAIL2BAN"
   printf "\n"
   local ok=""
   while [[ ! "$ok" =~ ^[yYnN]$ ]]; do
@@ -297,6 +322,9 @@ LIBRETIME_SETUP_ICECAST=${LIBRETIME_SETUP_ICECAST:-true}
 LIBRETIME_SETUP_POSTGRESQL=${LIBRETIME_SETUP_POSTGRESQL:-true}
 # > Create a default rabbitmq user with a random password.
 LIBRETIME_SETUP_RABBITMQ=${LIBRETIME_SETUP_RABBITMQ:-true}
+# > Install fail2ban filters/jails for Harbor, Icecast and LibreTime login.
+# > Disabled by default; the wizard can enable it interactively.
+LIBRETIME_SETUP_FAIL2BAN=${LIBRETIME_SETUP_FAIL2BAN:-false}
 
 # > Comma separated list of sections to exclude from packages list.
 LIBRETIME_PACKAGES_EXCLUDES=${LIBRETIME_PACKAGES_EXCLUDES:-}
@@ -347,6 +375,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --no-setup-rabbitmq)
       LIBRETIME_SETUP_RABBITMQ=false
+      shift 1
+      ;;
+    --setup-fail2ban)
+      LIBRETIME_SETUP_FAIL2BAN=true
+      shift 1
+      ;;
+    --no-setup-fail2ban)
+      LIBRETIME_SETUP_FAIL2BAN=false
       shift 1
       ;;
     --no-https-auto)
@@ -1127,6 +1163,81 @@ if $is_first_install && command -v ufw > /dev/null 2>&1 && ufw status 2> /dev/nu
     info "UFW: allowing 8001/tcp and 8002/tcp for Harbor live inputs"
     ufw allow 8001/tcp
     ufw allow 8002/tcp
+  fi
+fi
+
+# fail2ban jails for LibreTime (opt-in)
+########################################################################################
+
+if $LIBRETIME_SETUP_FAIL2BAN; then
+  section "fail2ban"
+
+  install_packages fail2ban
+
+  info "installing LibreTime fail2ban filters"
+  install -m 0644 -D -t /etc/fail2ban/filter.d/ \
+    "$SCRIPT_DIR/installer/fail2ban/filter.d/libretime-harbor.conf" \
+    "$SCRIPT_DIR/installer/fail2ban/filter.d/icecast-auth.conf" \
+    "$SCRIPT_DIR/installer/fail2ban/filter.d/nginx-libretime-login.conf"
+
+  info "installing LibreTime fail2ban actions"
+  install -m 0644 -D -t /etc/fail2ban/action.d/ \
+    "$SCRIPT_DIR/installer/fail2ban/action.d/libretime-conntrack-flush.conf"
+
+  # Harbor auth log written by Liquidsoap (ls_script.liq file.write).
+  # Directory must exist and be writable by the libretime user before the
+  # playout service starts; the file itself is touched 0640 so fail2ban can
+  # register the jail even if no auth attempt has happened yet.
+  install -d -m 0750 -o "$LIBRETIME_USER" -g adm /var/log/libretime
+  install -m 0640 -o "$LIBRETIME_USER" -g adm -D /dev/null /var/log/libretime/harbor-auth.log 2>/dev/null || \
+    touch /var/log/libretime/harbor-auth.log
+
+  info "installing logrotate entry for /var/log/libretime/harbor-auth.log"
+  sed "s|@@USER@@|$LIBRETIME_USER|g" \
+    "$SCRIPT_DIR/installer/fail2ban/logrotate/libretime-harbor-auth.conf" \
+    > /etc/logrotate.d/libretime-harbor-auth
+  chmod 0644 /etc/logrotate.d/libretime-harbor-auth
+
+  if $LIBRETIME_HTTPS_ENABLE; then
+    # Reverse-proxy mode: nginx is publicly exposed on 80 (HTTP → HTTPS
+    # redirect) and 443 (TLS). LIBRETIME_LISTEN_PORT is only the internal
+    # upstream port in this mode and is not reachable from the outside.
+    libretime_nginx_access_log="/var/log/nginx/libretime-proxy.access.log"
+    libretime_nginx_ports="80,443"
+  else
+    # HTTP mode: nginx listens directly on LIBRETIME_LISTEN_PORT (default 8080,
+    # overridable via --listen-port / LIBRETIME_LISTEN_PORT). The fail2ban jail
+    # must target the same port, otherwise bans would not cover the real
+    # service socket.
+    libretime_nginx_access_log="/var/log/nginx/libretime.access.log"
+    libretime_nginx_ports="${LIBRETIME_LISTEN_PORT}"
+  fi
+  # Ensure the log file exists so fail2ban does not fail the jail at startup
+  # when nginx has not written any request yet.
+  install -m 0640 -o www-data -g adm -D /dev/null "$libretime_nginx_access_log" 2>/dev/null || \
+    touch "$libretime_nginx_access_log"
+
+  # If nginx is already running it still holds an fd on the previous (now unlinked)
+  # inode of the access log; without a reopen it would keep writing to the orphan
+  # file and the nginx-libretime-login jail would never see any request.
+  if systemctl is-active nginx > /dev/null 2>&1; then
+    nginx -t > /dev/null 2>&1 && systemctl reload nginx > /dev/null 2>&1 || true
+  fi
+
+  info "installing LibreTime fail2ban jail drop-in (nginx log: $libretime_nginx_access_log, nginx ports: $libretime_nginx_ports)"
+  sed -e "s|@LIBRETIME_NGINX_ACCESS_LOG@|$libretime_nginx_access_log|g" \
+      -e "s|@LIBRETIME_NGINX_PORTS@|$libretime_nginx_ports|g" \
+    "$SCRIPT_DIR/installer/fail2ban/jail.d/91-libretime.conf" \
+    > "/etc/fail2ban/jail.d/91-libretime.conf"
+  chmod 0644 "/etc/fail2ban/jail.d/91-libretime.conf"
+
+  systemctl enable fail2ban > /dev/null 2>&1 || true
+  if systemctl is-active fail2ban > /dev/null 2>&1; then
+    info "reloading fail2ban"
+    fail2ban-client reload > /dev/null || service_restart_if_active fail2ban
+  else
+    info "starting fail2ban"
+    systemctl start fail2ban || warning "could not start fail2ban; check 'systemctl status fail2ban'"
   fi
 fi
 
