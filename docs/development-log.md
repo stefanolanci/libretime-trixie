@@ -7,6 +7,18 @@ Repository: `https://github.com/stefanolanci/libretime-trixie` — install targe
 
 ---
 
+## 2026-04-22 — `uninstall-libretime.sh` aligned with `./install`
+
+- **fail2ban:** removes the same drop-ins `install` deploys when fail2ban is enabled (`/etc/fail2ban/filter.d/{libretime-harbor,icecast-auth,nginx-libretime-login}.conf`, `action.d/libretime-conntrack-flush.conf`, `jail.d/91-libretime.conf`, `logrotate.d/libretime-harbor-auth`), then `fail2ban-client reload` (or `systemctl try-reload-or-restart fail2ban`) if the service is active — *before* `rm -rf /var/log/libretime` so jails are not left pointing at deleted log paths.
+- **Nginx HTTP logs:** also deletes `libretime.access.log` / `libretime.error.log` (not only the HTTPS proxy `libretime-proxy.*` pair).
+- **System user:** reads `User=` from `libretime-api.service` (default `libretime`) for `pkill` / `userdel`, matching a non-default `--user` on install; guards against an unexpected `User=root`.
+- **PostgreSQL / RabbitMQ:** parses `database.user`, `database.name`, `rabbitmq.user`, and `rabbitmq.vhost` from `/etc/libretime/config.yml` *before* removing `/etc/libretime`, and uses them in `dropdb` / `DROP ROLE` / `delete_user` / `delete_vhost` in `--remove-data` and `--purge-packages` (previously the script always assumed role/db/user `libretime` and vhost `/libretime`).
+- **`--purge-packages`:** adds **`fail2ban`** to the `apt-get purge` list (after our jail files are already removed) so a dedicated single-purpose radio host can strip the service entirely; on shared systems this remains dangerous, as documented.
+- **By design, unchanged:** UFW `allow` rules and any `127.0.1.1` line appended to `/etc/hosts` by the installer are not reverted (documented in script `--help` and README **Uninstall**).
+- **Bugfix:** the `for u in ...` service loop clobbered a temporary `u` used for user detection — the loop variable was renamed to `unit`.
+
+---
+
 ## 2026-04-22 — Installer hardening: upgrade path, idempotency, and satellite scripts
 
 Multi-area cleanup of the root `install` script and of the Python/Bash helpers it invokes. No behavioral change for a successful first install; every change is scoped to make retries, upgrades, and partial-state recoveries predictable.
@@ -169,4 +181,4 @@ A dedicated upgrade block runs before any destructive action and prints a summar
 
 ---
 
-*Last log update: 2026-04-22 (installer hardening: upgrade path, idempotent credentials, and satellite-script determinism — on top of the opt-in fail2ban security suite landed earlier the same day).*
+*Last log update: 2026-04-22 (uninstall-libretime.sh aligned with install — fail2ban, logs, system user, PG/Rabbit identity from config; plus the installer-hardening and fail2ban work from the same day).*

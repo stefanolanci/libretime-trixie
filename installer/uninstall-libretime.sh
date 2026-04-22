@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Remove LibreTime native install (systemd, trees, config). Run as root.
-# Also removes Nginx reverse-proxy/Certbot/Icecast TLS artifacts added when
-# public_url was https:// during install.
+# Mirrors the reverse of ./install: app trees, Nginx, Certbot/Let's Encrypt and
+# Icecast TLS, optional fail2ban drop-ins, PHP pool, logrotate, CLI symlinks.
+# UFW "allow" rules that ./install may have added are NOT removed here (see help).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -26,8 +27,28 @@ Choose exactly one uninstall level:
   --purge-packages
       Same as --remove-data, plus attempt apt purge of common stack packages
       typically installed by ./install (nginx, php-fpm, postgresql, rabbitmq,
-      redis, certbot, icecast, etc.).
+      redis, certbot, icecast, fail2ban, etc.).
       WARNING: this can affect other applications on the same host.
+
+What is always removed (all modes), matching ./install:
+  - Systemd units/sockets and libretime.target under /usr/lib/systemd/system
+  - /opt/libretime (venv), /etc/libretime, /var/lib/libretime, /var/log/libretime,
+    /usr/share/libretime/legacy
+  - Nginx vhosts libretime.conf and libretime-https-proxy.conf; Certbot deploy
+    hooks and /usr/local/sbin/*libretime* helpers; Icecast bundle.pem; optional
+    LE cert when detected from public_url
+  - fail2ban drop-ins: filter.d/{libretime-harbor,icecast-auth,nginx-libretime-login}.conf,
+    action.d/libretime-conntrack-flush.conf, jail.d/91-libretime.conf, then
+    fail2ban reload if the service is active
+  - logrotate: libretime-legacy, libretime-liquidsoap, libretime-harbor-auth
+  - The system user running services: taken from User= in libretime-api.service
+    if present (default libretime), not only the name "libretime"
+
+Not removed (by design):
+  - UFW: ./install may have run "ufw allow" for web/Harbor/Icecast; those rules
+    are left in place. Remove manually with: ufw status numbered / ufw delete <n>
+  - /etc/hosts: a line 127.0.1.1 <hostname> appended by the installer is not
+    stripped, to avoid clobbering manual edits
 
 Extra:
   --yes      Skip interactive confirmation prompt.
@@ -94,9 +115,9 @@ esac
 
 echo "=== Stopping LibreTime services ==="
 systemctl stop libretime.target 2>/dev/null || true
-for u in libretime-api.socket libretime-api libretime-playout libretime-liquidsoap libretime-analyzer libretime-worker; do
-  systemctl stop "$u" 2>/dev/null || true
-  systemctl disable "$u" 2>/dev/null || true
+for unit in libretime-api.socket libretime-api libretime-playout libretime-liquidsoap libretime-analyzer libretime-worker; do
+  systemctl stop "$unit" 2>/dev/null || true
+  systemctl disable "$unit" 2>/dev/null || true
 done
 systemctl disable libretime.target 2>/dev/null || true
 
@@ -110,8 +131,77 @@ if [[ -f /etc/libretime/config.yml ]]; then
   fi
 fi
 
+# Database / broker identity (read before we rm -rf /etc/libretime; mirrors ./install keys)
+LIBRETIME_PG_USER="libretime"
+LIBRETIME_PG_DB="libretime"
+RABBITMQ_USER_IN="libretime"
+RABBITMQ_VHOST_IN="/libretime"
+if [[ -f /etc/libretime/config.yml ]]; then
+  section=""
+  while IFS= read -r line; do
+    if [[ "$line" =~ ^([a-z_]+):[[:space:]]*$ ]]; then
+      section="${BASH_REMATCH[1]}"
+      continue
+    fi
+    if [[ "$section" == "database" ]] && [[ "$line" =~ ^[[:space:]]+user:[[:space:]]+(.+)$ ]]; then
+      v="${BASH_REMATCH[1]//[[:space:]]/}"
+      v="${v//\"/}"
+      v="${v//\'/}"
+      [[ -n "$v" ]] && LIBRETIME_PG_USER="$v"
+    fi
+    if [[ "$section" == "database" ]] && [[ "$line" =~ ^[[:space:]]+name:[[:space:]]+(.+)$ ]]; then
+      v="${BASH_REMATCH[1]//[[:space:]]/}"
+      v="${v//\"/}"
+      v="${v//\'/}"
+      [[ -n "$v" ]] && LIBRETIME_PG_DB="$v"
+    fi
+    if [[ "$section" == "rabbitmq" ]] && [[ "$line" =~ ^[[:space:]]+user:[[:space:]]+(.+)$ ]]; then
+      v="${BASH_REMATCH[1]//[[:space:]]/}"
+      v="${v//\"/}"
+      v="${v//\'/}"
+      [[ -n "$v" ]] && RABBITMQ_USER_IN="$v"
+    fi
+    if [[ "$section" == "rabbitmq" ]] && [[ "$line" =~ ^[[:space:]]+vhost:[[:space:]]+(.+)$ ]]; then
+      v="${BASH_REMATCH[1]//[[:space:]]/}"
+      v="${v//\"/}"
+      v="${v//\'/}"
+      # Normalize "" or bare / to what rabbitmqctl expects
+      if [[ -n "$v" ]]; then
+        RABBITMQ_VHOST_IN="$v"
+        [[ "$RABBITMQ_VHOST_IN" == /* ]] || RABBITMQ_VHOST_IN="/${RABBITMQ_VHOST_IN}"
+      fi
+    fi
+  done < /etc/libretime/config.yml
+  echo "=== From config (remove-data / purge only): PG user='${LIBRETIME_PG_USER}' db='${LIBRETIME_PG_DB}', RabbitMQ user='${RABBITMQ_USER_IN}' vhost='${RABBITMQ_VHOST_IN}' ==="
+fi
+
+# System user (./install may use --user; units carry User= before we delete them)
+LIBRETIME_SYS_USER="libretime"
+if [[ -f /usr/lib/systemd/system/libretime-api.service ]]; then
+  u="$(grep -m1 '^User=' /usr/lib/systemd/system/libretime-api.service 2>/dev/null | cut -d= -f2- || true)"
+  u="${u//[[:space:]]/}"
+  if [[ -n "$u" ]]; then
+    LIBRETIME_SYS_USER="$u"
+  fi
+fi
+echo "=== LibreTime system user (for userdel / pkill): ${LIBRETIME_SYS_USER} ==="
+
 echo "=== Stopping Icecast (will restore stock config if needed) ==="
 systemctl stop icecast2 2>/dev/null || true
+
+echo "=== fail2ban (LibreTime filters, jails, actions) — before removing log files ==="
+# Matches ./install when LIBRETIME_SETUP_FAIL2BAN was used.
+rm -f /etc/fail2ban/filter.d/libretime-harbor.conf \
+      /etc/fail2ban/filter.d/icecast-auth.conf \
+      /etc/fail2ban/filter.d/nginx-libretime-login.conf \
+      /etc/fail2ban/action.d/libretime-conntrack-flush.conf \
+      /etc/fail2ban/jail.d/91-libretime.conf
+rm -f /etc/logrotate.d/libretime-harbor-auth
+if command -v fail2ban-client >/dev/null 2>&1; then
+  if systemctl is-active fail2ban >/dev/null 2>&1; then
+    fail2ban-client reload >/dev/null 2>&1 || systemctl try-reload-or-restart fail2ban >/dev/null 2>&1 || true
+  fi
+fi
 
 echo "=== Removing systemd units ==="
 rm -f /usr/lib/systemd/system/libretime-api.service \
@@ -145,7 +235,8 @@ rm -f /etc/nginx/sites-enabled/libretime.conf
 rm -f /etc/nginx/sites-available/libretime.conf
 rm -f /etc/nginx/sites-enabled/libretime-https-proxy.conf
 rm -f /etc/nginx/sites-available/libretime-https-proxy.conf
-rm -f /var/log/nginx/libretime-proxy.access.log /var/log/nginx/libretime-proxy.error.log
+rm -f /var/log/nginx/libretime.access.log /var/log/nginx/libretime.error.log \
+      /var/log/nginx/libretime-proxy.access.log /var/log/nginx/libretime-proxy.error.log
 rm -f /etc/logrotate.d/libretime-legacy /etc/logrotate.d/libretime-liquidsoap
 rm -f /etc/php/*/fpm/pool.d/libretime-legacy.conf
 # Certbot may have created a vhost named after the domain (besides libretime-https-proxy.conf).
@@ -190,17 +281,17 @@ if [[ -n "$CERT_NAME" ]] && command -v certbot >/dev/null 2>&1; then
 fi
 
 if [[ "$MODE" == "--remove-data" || "$MODE" == "--purge-packages" ]]; then
-  echo "=== PostgreSQL ==="
+  echo "=== PostgreSQL (db='${LIBRETIME_PG_DB}', role='${LIBRETIME_PG_USER}') ==="
   if command -v psql >/dev/null && id postgres &>/dev/null; then
-    sudo -u postgres psql -tAc "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'libretime' AND pid <> pg_backend_pid();" 2>/dev/null || true
-    sudo -u postgres dropdb --if-exists libretime 2>/dev/null || true
-    sudo -u postgres psql -c "DROP ROLE IF EXISTS libretime;" 2>/dev/null || true
+    sudo -u postgres psql -tAc "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${LIBRETIME_PG_DB}' AND pid <> pg_backend_pid();" 2>/dev/null || true
+    sudo -u postgres dropdb --if-exists "$LIBRETIME_PG_DB" 2>/dev/null || true
+    sudo -u postgres psql -c "DROP ROLE IF EXISTS \"${LIBRETIME_PG_USER}\";" 2>/dev/null || true
   fi
 
-  echo "=== RabbitMQ ==="
+  echo "=== RabbitMQ (user='${RABBITMQ_USER_IN}', vhost='${RABBITMQ_VHOST_IN}') ==="
   if command -v rabbitmqctl >/dev/null 2>&1; then
-    rabbitmqctl delete_user libretime 2>/dev/null || true
-    rabbitmqctl delete_vhost /libretime 2>/dev/null || true
+    rabbitmqctl delete_user "$RABBITMQ_USER_IN" 2>/dev/null || true
+    rabbitmqctl delete_vhost "$RABBITMQ_VHOST_IN" 2>/dev/null || true
   fi
 else
   echo "Keeping PostgreSQL and RabbitMQ data (mode: --keep-data)"
@@ -227,11 +318,15 @@ for svc in /lib/systemd/system/php*-fpm.service; do
   systemctl stop "$(basename "$svc")" 2>/dev/null || true
 done
 sleep 1
-pkill -u libretime 2>/dev/null || true
+pkill -u "$LIBRETIME_SYS_USER" 2>/dev/null || true
 
 echo "=== System user ==="
-if id libretime &>/dev/null; then
-  userdel libretime 2>/dev/null || true
+if id "$LIBRETIME_SYS_USER" &>/dev/null; then
+  if [[ "$LIBRETIME_SYS_USER" == "root" ]]; then
+    echo "Not removing system user (unexpected User=root in service file)." >&2
+  else
+    userdel "$LIBRETIME_SYS_USER" 2>/dev/null || true
+  fi
 fi
 
 for svc in /lib/systemd/system/php*-fpm.service; do
@@ -250,6 +345,7 @@ if [[ "$MODE" == "--purge-packages" ]]; then
       nginx nginx-common \
       certbot python3-certbot-nginx \
       icecast2 \
+      fail2ban \
       rabbitmq-server redis-server \
       postgresql postgresql-client \
       php-fpm php8.4-fpm php8.4-cli php8.4-common php8.4-pgsql php8.4-curl php8.4-xml php8.4-mbstring php8.4-gd php8.4-intl php8.4-zip \

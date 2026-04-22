@@ -470,8 +470,11 @@ command_exist() {
 }
 
 # generate_random_password
+# Note: with `set -o pipefail`, `tr | head` is not safe -- when head closes
+# after 32 bytes, tr gets SIGPIPE and may exit 141, failing the whole script
+# in command substitution. Disable pipefail for this pipeline only.
 generate_random_password() {
-  tr -cd '[:alnum:]' < /dev/urandom | head -c32
+  ( set +o pipefail; tr -cd '[:alnum:]' < /dev/urandom | head -c32 )
 }
 
 # mkdir_and_chown <user> <path>
@@ -687,10 +690,12 @@ prepare_packages_install() {
 }
 
 # install_packages <packages...>
+# Use -q (not -qq): very-quiet apt looks like a hang; -q still keeps noise low
+# but shows unpack/config lines so long installs are visibly progressing.
 install_packages() {
   if $is_debian; then
     # shellcheck disable=SC2086
-    DEBIAN_FRONTEND=noninteractive apt-get -qq -y install "$@"
+    DEBIAN_FRONTEND=noninteractive apt-get -q -y install "$@"
   else
     warning "installing dependencies is not supported for this distribution"
   fi
@@ -763,7 +768,13 @@ if ! $is_first_install; then
   detected_storage_path="$(get_config storage path)"
   detected_listen_port=""
   if [[ -f /etc/nginx/sites-available/libretime.conf ]]; then
-    detected_listen_port="$(grep -oE 'listen[[:space:]]+[0-9]+' /etc/nginx/sites-available/libretime.conf | head -n1 | awk '{print $2}')"
+    # grep exits 1 when there is no match; with `pipefail` that would kill the
+    # install before we print the upgrade summary unless we only read pipeline status
+    # from the last command (or disable pipefail for this sub-pipeline).
+    detected_listen_port="$(
+      set +o pipefail
+      grep -oE 'listen[[:space:]]+[0-9]+' /etc/nginx/sites-available/libretime.conf | head -n1 | awk '{print $2}'
+    )"
   fi
   detected_https_mode="no"
   if [[ -f /etc/nginx/sites-enabled/libretime-https-proxy.conf ]]; then
@@ -883,13 +894,44 @@ LIBRETIME_POSTGRESQL_DATABASE=${LIBRETIME_POSTGRESQL_DATABASE:-"libretime"}
 
 if $LIBRETIME_SETUP_POSTGRESQL; then
   section "PostgreSQL"
+  info "installing PostgreSQL packages via apt (if this sits with no new lines, another apt may hold the dpkg lock: fuser -v /var/lib/dpkg/lock-frontend)"
   install_packages postgresql postgresql-client
+
+  # Ensure the server is up before any psql — otherwise the next pipeline can
+  # block indefinitely (no output after the 'PostgreSQL' section header).
+  info "starting PostgreSQL service (cluster may be created on first install)"
+  systemctl enable --now postgresql 2>/dev/null || systemctl start postgresql 2>/dev/null || true
+  if ! systemctl is-active --quiet postgresql 2>/dev/null; then
+    shopt -s nullglob
+    for unit in /lib/systemd/system/postgresql@*.service; do
+      systemctl enable --now "$(basename "$unit")" 2>/dev/null || systemctl start "$(basename "$unit")" 2>/dev/null || true
+    done
+    shopt -u nullglob
+  fi
+  if command -v pg_isready >/dev/null 2>&1; then
+    info "waiting for PostgreSQL to accept connections…"
+    for ((i = 0; i < 120; i++)); do
+      if sudo -iH -u postgres pg_isready -q; then
+        break
+      fi
+      if ((i % 20 == 0)) && ((i > 0)); then
+        info "still waiting for PostgreSQL (${i}s) — check: systemctl status postgresql; journalctl -n 20 -u postgresql"
+      fi
+      sleep 1
+    done
+    if ! sudo -iH -u postgres pg_isready -q; then
+      error "PostgreSQL did not become ready after 120s. On the server run: systemctl status postgresql; journalctl -xeu postgresql"
+    fi
+  else
+    warning "pg_isready not found; if the next step hangs, PostgreSQL is not listening — check systemctl status postgresql"
+  fi
 
   if $is_first_install; then
     # Idempotent: whether the role is brand new (success-path) or already
     # exists from an aborted first install (retry-path), always ALTER ROLE
     # with the password we generate/keep and write it to config.yml.tmp.
     # This prevents a silent password mismatch between DB and config.yml.
+    info "configuring database role and schema for LibreTime"
     if ! sudo -iH -u postgres psql --csv --tuples-only --command='\du' | grep -qw "^$LIBRETIME_POSTGRESQL_USER"; then
       info "creating PostgreSQL user '$LIBRETIME_POSTGRESQL_USER'"
       sudo -iH -u postgres createuser "$LIBRETIME_POSTGRESQL_USER"
