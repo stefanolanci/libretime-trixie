@@ -129,13 +129,13 @@ def input_show_on_disconnect() update_source_status("live_dj", false) end
 
 def make_input_auth_handler(input_name)
     def auth_handler(args)
-        log("user '#{args.user}' connected", label="#{input_name}_input")
+        log("user '#{args.user}' connected from #{args.address}", label="#{input_name}_input")
 
         ret = process.test("libretime-playout-notify live-auth '#{input_name}' '#{args.user}' '#{args.password}'")
         if ret then
-            log("user '#{args.user}' authenticated", label="#{input_name}_input")
+            log("user '#{args.user}' authenticated from #{args.address}", label="#{input_name}_input")
         else
-            log("user '#{args.user}' auth failed", label="#{input_name}_input",level=2)
+            log("user '#{args.user}' auth failed from #{args.address}", label="#{input_name}_input",level=2)
         end
 
         ret
