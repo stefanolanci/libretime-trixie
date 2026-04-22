@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-version = "0.1.9"  # libretime-trixie fork (Git tag 0.1.9-trixie); not upstream 4.x semver
+version = "0.1.10"  # libretime-trixie fork (Git tag 0.1.10-trixie); not upstream 4.x semver
 
 setup(
     name="libretime-analyzer",
