@@ -340,17 +340,19 @@ systemctl start icecast2 2>/dev/null || true
 if [[ "$MODE" == "--purge-packages" ]]; then
   echo "=== Purging common LibreTime stack packages (best effort) ==="
   if command -v apt-get >/dev/null 2>&1; then
+    # No Debian package named libretime* (install is from source); listing it
+    # makes apt-get abort the whole purge line on trixie/bookworm.
     DEBIAN_FRONTEND=noninteractive apt-get -y purge \
-      libretime\* \
       nginx nginx-common \
-      certbot python3-certbot-nginx \
       icecast2 \
       fail2ban \
       rabbitmq-server redis-server \
       postgresql postgresql-client \
-      php-fpm php8.4-fpm php8.4-cli php8.4-common php8.4-pgsql php8.4-curl php8.4-xml php8.4-mbstring php8.4-gd php8.4-intl php8.4-zip \
+      php8.4-fpm php8.4-cli php8.4-common php8.4-pgsql php8.4-curl php8.4-xml php8.4-mbstring php8.4-gd php8.4-intl php8.4-zip \
       liquidsoap \
       || true
+    # HTTP-only installs may never have pulled Certbot; a missing name aborts apt purge.
+    DEBIAN_FRONTEND=noninteractive apt-get -y purge certbot python3-certbot-nginx >/dev/null 2>&1 || true
     DEBIAN_FRONTEND=noninteractive apt-get -y autoremove --purge || true
   else
     echo "apt-get not found: skipping package purge."
