@@ -1,5 +1,7 @@
 # LibreTime (Debian Trixie)
 
+**Distribution:** [libretime-trixie](https://github.com/stefanolanci/libretime-trixie) **v0.1.8-trixie** — installer label in root `VERSION` is `0.1.8 trixie`; Python components ship setuptools **0.1.8** for this fork (see [CHANGELOG.md](CHANGELOG.md)).
+
 Native radio automation for **Debian 13 (Trixie)**. Installation uses the root `install` script (systemd units, no containers).
 
 This tree targets **Trixie** specifically (PHP **8.4**, current Python, **Liquidsoap ≥ 2.3** from Debian). It includes **operational fixes** compared to a generic LibreTime line: legacy patches, a Celery worker backed by **Redis**, a **single** Liquidsoap bundle (`ls_script.liq` / `ls_lib.liq` under `playout/`), and Composer from APT.
@@ -10,6 +12,7 @@ This tree targets **Trixie** specifically (PHP **8.4**, current Python, **Liquid
 
 ## Contents
 
+- [Changelog](CHANGELOG.md)
 - [Requirements](#requirements)
 - [Get the source](#get-the-source)
 - [Installation](#installation)
@@ -78,7 +81,7 @@ Optional **`.env`** in the same directory as `install`: the script sources it so
 
 ### What the published tree must contain for `./install`
 
-From a **clean clone** of this fork, **`./install`** expects **`installer/`** (including **`config.yml`** template, **`nginx/`**, **`icecast/`**, **`letsencrypt/`**, **`uninstall-libretime.sh`**, **`systemd/libretime.target`**), **`tools/packages.py`**, **`tools/version.sh`**, and the application directories **`shared/`**, **`api-client/`**, **`api/`**, **`playout/`**, **`analyzer/`**, **`worker/`**, **`legacy/`**, plus root **`VERSION`**. The published repository includes **only** those two paths under **`tools/`**; optional local helpers (deploy scripts, diagnostics under **`scripts/`**, etc.) are **not** shipped on GitHub—add them locally if you use them. They are **not** invoked by `./install`.
+From a **clean clone** of this fork, **`./install`** expects **`installer/`** (including **`config.yml`** template, **`nginx/`**, **`icecast/`**, **`letsencrypt/`**, **`uninstall-libretime.sh`**, **`systemd/libretime.target`**), **`tools/packages.py`**, **`tools/version.sh`**, and the application directories **`shared/`**, **`api-client/`**, **`api/`**, **`playout/`**, **`analyzer/`**, **`worker/`**, **`legacy/`**, plus root **`VERSION`**, **`CHANGELOG.md`**, and **`docs/development-log.md`**. The published repository includes **only** those two paths under **`tools/`**; optional local helpers (deploy scripts, diagnostics under **`scripts/`**, etc.) are **not** shipped on GitHub—add them locally if you use them. They are **not** invoked by `./install`.
 
 ---
 
@@ -274,7 +277,7 @@ Targeted fixes for **Debian 13 / Liquidsoap 2.3** and races between UI, API, and
 - **Install robustness:** `--wizard` validates TTY, blocks upgrade usage, and rejects combined positional URL; flags requiring arguments now fail with a clear message instead of a cryptic `shift` error; first install without a URL or `--wizard` is now blocked.
 - **Installer hardening (upgrade path, idempotency, satellite scripts):** upgrades now rehydrate `public_url` from the live `config.yml` when absent, **hard-error on `public_url` or `--user` mismatch** (preventing silent config drift), print a pre-upgrade summary of the detected layout with a non-blocking TTY countdown, and restart already-active LibreTime services (`libretime-api`, `libretime-playout`, `libretime-liquidsoap`, `libretime-analyzer`, `libretime-worker`) after the upgrade completes. HTTPS detection in the summary distinguishes "proxy only (no TLS cert)" from "TLS cert present" by probing `/etc/letsencrypt/live/<host>/fullchain.pem`. First-install retries now **reset PostgreSQL and RabbitMQ passwords** (`ALTER ROLE` / `rabbitmqctl change_password`) to keep `config.yml` in sync, eliminating the mismatch class caused by a previously-aborted first install. The script itself is hardened with `set -o pipefail`, `cd "$SCRIPT_DIR"` for stable relative paths, and an earlier `python3` install so the `tools/packages.py` helper is always available. Satellite scripts were audited and fixed: `tools/packages.py` returns a deterministically sorted list (the previous `set(sorted(...))` destroyed the ordering and made install logs non-diffable), tolerates whitespace in the distributions delimiter, and warns on unknown `--exclude` sections; `installer/icecast/patch_xml_ssl.py` is now idempotent (detects `bundle.pem` already wired and exits 0 cleanly instead of emitting a false "could not patch icecast.xml" warning on re-runs); `installer/letsencrypt/renew-icecast-bundle.sh` skips cleanly when Icecast has been uninstalled (`getent group icecast || exit 0`) and writes a syslog trail via `logger -t libretime-icecast-bundle` for every skip/success so renewal failures are diagnosable from `/var/log/syslog`.
 - **Opt-in fail2ban security suite:** wizard step, CLI flags (`--setup-fail2ban` / `--no-setup-fail2ban`), and `LIBRETIME_SETUP_FAIL2BAN` env var deploy three independent jails (`libretime-harbor`, `icecast-auth`, `nginx-libretime-login`) aligned with the stock `sshd` policy (`maxretry=5`, `findtime=3600`, `bantime=1800`). Harbor auth is logged via `ls_script.liq` into a dedicated file so the jail is immune to the fail2ban 1.1.0 + `python3-systemd` systemd-backend regression on Debian 13. The nginx jail port is driven by a placeholder substituted at install time (HTTP mode: `LIBRETIME_LISTEN_PORT`; HTTPS mode: `80,443`), so the `nftables` rule always targets the real service socket. A companion `libretime-conntrack-flush` action closes ESTABLISHED TCP keep-alive sockets of the banned IP, strictly scoped to the jail's own ports, so browsers cannot keep hitting `/login` over pre-existing connections and bans stay per-service. Logrotate entry for `/var/log/libretime/harbor-auth.log` (weekly × 12, compress + delaycompress). Default: **disabled**.
-- **Version label:** root `VERSION` file (e.g. `0.0.5 trixie`); `tools/version.sh` does **not** overwrite it when it already contains a semver.
+- **Version label:** root `VERSION` file (e.g. `0.1.8 trixie`); `tools/version.sh` does **not** overwrite it when it already contains a semver. Git **release tags** for this fork use **`v0.1.8-trixie`** style (leading `v`, codename after patch).
 
 A chronological **development log** (English) is maintained in [`docs/development-log.md`](docs/development-log.md); update it when you land meaningful fork changes.
 

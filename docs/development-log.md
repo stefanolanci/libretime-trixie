@@ -7,6 +7,14 @@ Repository: `https://github.com/stefanolanci/libretime-trixie` — install targe
 
 ---
 
+## 2026-04-22 — Release **v0.1.8-trixie** (canonical versioning)
+
+- **Forge identity:** Git annotated tag **`v0.1.8-trixie`**, root **`VERSION`** remains **`0.1.8 trixie`** (semver + space + codename; `tools/version.sh` unchanged).
+- **Python packages:** all component **`setup.py`** files now declare **`0.1.8`** (replacing inherited **`4.5.0`** from upstream metadata) and **`url` / `project_urls`** → `https://github.com/stefanolanci/libretime-trixie` so `pip`/wheel metadata matches this fork.
+- **User-facing changelog:** root **`CHANGELOG.md`** indexes **`0.1.8-trixie`**; legacy **`LIBRETIME_WHATS_NEW_URL`** / **`LIBRETIME_UPDATE_FEED`** and **`config-check.php`** release-notes link target **this fork’s** GitHub Releases (not upstream’s).
+
+---
+
 ## 2026-04-22 — `uninstall-libretime.sh` aligned with `./install`
 
 - **fail2ban:** removes the same drop-ins `install` deploys when fail2ban is enabled (`/etc/fail2ban/filter.d/{libretime-harbor,icecast-auth,nginx-libretime-login}.conf`, `action.d/libretime-conntrack-flush.conf`, `jail.d/91-libretime.conf`, `logrotate.d/libretime-harbor-auth`), then `fail2ban-client reload` (or `systemctl try-reload-or-restart fail2ban`) if the service is active — *before* `rm -rf /var/log/libretime` so jails are not left pointing at deleted log paths.

@@ -46,8 +46,8 @@ define('ABOUT_AIRTIME_URL', 'https://libretime.org');
 define('LIBRETIME_CONTRIBUTE_URL', 'https://libretime.org/contribute');
 define('LIBRETIME_DISCOURSE_URL', 'https://discourse.libretime.org');
 define('UI_REVAMP_EMBED_URL', 'https://www.youtube.com/embed/nqpNnCKGluY');
-define('LIBRETIME_WHATS_NEW_URL', 'https://github.com/libretime/libretime/releases');
-define('LIBRETIME_UPDATE_FEED', 'https://github.com/libretime/libretime/releases.atom');
+define('LIBRETIME_WHATS_NEW_URL', 'https://github.com/stefanolanci/libretime-trixie/releases');
+define('LIBRETIME_UPDATE_FEED', 'https://github.com/stefanolanci/libretime-trixie/releases.atom');
 define('LIBRETIME_EMAIL_FROM', 'noreply@libretime.org');
 
 define('LICENSE_VERSION', 'GNU AGPL v.3');
