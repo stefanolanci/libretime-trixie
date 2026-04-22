@@ -16,23 +16,23 @@ Upstream code lineage: [LibreTime](https://github.com/libretime/libretime) (AGPL
 
 | Layer | Format | Example (current) |
 |--------|--------|---------------------|
-| **Git tag (on GitHub for this repo)** | `v` + Major.Minor.Patch + `-trixie` | **`v0.1.9-trixie`** |
+| **Git tag (on GitHub for this repo)** | Major.Minor.Patch + `-trixie` (**no** leading `v`; ruleset rejects `refs/tags/v…-trixie`) | **`0.1.9-trixie`** |
 | **Root `VERSION`** | Major.Minor.Patch + space + `trixie` | **`0.1.9 trixie`** |
 | **Python `setup.py`** | `version="Major.Minor.Patch"` | **`0.1.9`** |
 
-Public history and release notes live **only** in this file ([**development-log**](development-log.md)) — there is no separate root changelog. [GitHub Releases](https://github.com/stefanolanci/libretime-trixie/releases) use the same **`vM.m.p-trixie`** naming for readability. One triple ⇒ **one** annotated tag and **one** release per bump.
+Public history and release notes live **only** in this file ([**development-log**](development-log.md)) — there is no separate root changelog. [GitHub Releases](https://github.com/stefanolanci/libretime-trixie/releases) may use a **title** such as **v0.1.9-trixie** for readability while the **tag ref** stays **`M.m.p-trixie`**. One triple ⇒ **one** annotated tag and **one** release per bump.
 
 ### Rules
 
-1. **New fork release** → bump **Major**, **Minor**, or **Patch** once; update **`VERSION`**, all **`setup.py`** `version=`, append a dated section **here**, then tag **`vM.m.p-trixie`** (example **`v0.1.9-trixie`**) and publish **one** GitHub release for that tag.
+1. **New fork release** → bump **Major**, **Minor**, or **Patch** once; update **`VERSION`**, all **`setup.py`** `version=`, append a dated section **here**, then tag **`M.m.p-trixie`** (example **`0.1.9-trixie`**) and publish **one** GitHub release for that tag.
 2. **`tools/version.sh`** does **not** overwrite **`VERSION`** when the first line already matches `^[0-9]+\.[0-9]+\.[0-9]+` (see script comments).
 3. **Legacy “What’s new”** uses **`LIBRETIME_WHATS_NEW_URL`** / **`LIBRETIME_UPDATE_FEED`** in `legacy/application/configs/constants.php` — they must point at **this fork’s** Releases, not upstream’s.
 
 ### Check out a known release
 
 ```bash
-git fetch origin tag v0.1.9-trixie
-git checkout v0.1.9-trixie   # detached HEAD; fine for installs
+git fetch origin tag 0.1.9-trixie
+git checkout 0.1.9-trixie   # detached HEAD; fine for installs
 # or stay on main after a release merge:
 git checkout main && git pull
 ```
@@ -43,6 +43,7 @@ git checkout main && git pull
 
 - Bumped fork **Major.Minor.Patch** to **0.1.9**: root **`VERSION`** and all component **`setup.py`** `version=` entries.
 - Removed root **`CHANGELOG.md`**; user-facing notes remain in this development log and on GitHub Releases.
+- **Git tag ref** on GitHub: **`0.1.9-trixie`** (leading **`v`** is rejected by repository rules on `refs/tags/`). Release title may still read **v0.1.9-trixie**.
 
 ---
 
