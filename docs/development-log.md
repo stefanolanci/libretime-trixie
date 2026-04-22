@@ -1,32 +1,32 @@
 # Development log (LibreTime Trixie fork)
 
-High-level chronological notes for meaningful changes versus upstream LibreTime.  
-Repository: `https://github.com/stefanolanci/libretime-trixie` — install target **Debian 13 (Trixie)**.
+English summary of **product and installer-visible** changes versus upstream LibreTime—features, fixes, compatibility, UX, and stack behavior relevant to administrators.
 
-**Maintainers:** update this file when you merge user-facing, API, playout, or installer-impacting work so it stays a faithful diary of the fork (English only).
+Repository: `https://github.com/stefanolanci/libretime-trixie` — target **Debian 13 (Trixie)**.
+
+Update this file when you ship meaningful fork changes so downstream users can follow releases without digging through Git history.
 
 ---
 
 ## Release identity and versioning
 
-This repository is the **libretime-trixie** distribution: LibreTime packaged and tested for **Debian 13 (Trixie)**.  
-Upstream code lineage: [LibreTime](https://github.com/libretime/libretime) (AGPL-3.0). This fork’s **release identity** is independent of upstream’s 4.x setuptools labels.
+This repository is the **libretime-trixie** distribution: LibreTime packaged and tested for **Debian 13 (Trixie)**. Upstream lineage: [LibreTime](https://github.com/libretime/libretime) (AGPL-3.0). This fork’s **release identity** is independent of upstream’s setuptools labels.
 
 **Semantic version (one triple):** **Major.Minor.Patch** (e.g. `0.1.9`). The same triple appears in **`VERSION`**, **`setup.py`**, and the **Git tag** before `-trixie`.
 
-| Layer | Format | Example (current) |
-|--------|--------|---------------------|
-| **Git tag (on GitHub for this repo)** | Major.Minor.Patch + `-trixie` (**no** leading `v`; ruleset rejects `refs/tags/v…-trixie`) | **`0.1.9-trixie`** |
-| **Root `VERSION`** | Major.Minor.Patch + space + `trixie` | **`0.1.9 trixie`** |
+| Layer | Format | Example |
+|--------|--------|---------|
+| **Git tag (this repo)** | `Major.Minor.Patch-trixie` (**no** leading `v` on the tag ref) | **`0.1.9-trixie`** |
+| **Root `VERSION`** | `Major.Minor.Patch` + space + `trixie` | **`0.1.9 trixie`** |
 | **Python `setup.py`** | `version="Major.Minor.Patch"` | **`0.1.9`** |
 
-Public history and release notes live **only** in this file ([**development-log**](development-log.md)) — there is no separate root changelog. [GitHub Releases](https://github.com/stefanolanci/libretime-trixie/releases) may use a **title** such as **v0.1.9-trixie** for readability while the **tag ref** stays **`M.m.p-trixie`**. One triple ⇒ **one** annotated tag and **one** release per bump.
+User-facing history for this fork is maintained **here** (no separate root changelog). [GitHub Releases](https://github.com/stefanolanci/libretime-trixie/releases) may use a readable title such as **v0.1.9-trixie** while the **tag ref** remains **`M.m.p-trixie`**. One triple ⇒ one annotated tag and one release per bump.
 
-### Rules
+### Release checklist
 
-1. **New fork release** → bump **Major**, **Minor**, or **Patch** once; update **`VERSION`**, all **`setup.py`** `version=`, append a dated section **here**, then tag **`M.m.p-trixie`** (example **`0.1.9-trixie`**) and publish **one** GitHub release for that tag.
+1. **New fork release** → bump **Major**, **Minor**, or **Patch** once; update **`VERSION`**, all **`setup.py`** `version=` entries; append a dated section below; tag **`M.m.p-trixie`** and publish **one** GitHub release for that tag.
 2. **`tools/version.sh`** does **not** overwrite **`VERSION`** when the first line already matches `^[0-9]+\.[0-9]+\.[0-9]+` (see script comments).
-3. **Legacy “What’s new”** uses **`LIBRETIME_WHATS_NEW_URL`** / **`LIBRETIME_UPDATE_FEED`** in `legacy/application/configs/constants.php` — they must point at **this fork’s** Releases, not upstream’s.
+3. Legacy **What’s new** URLs (**`LIBRETIME_WHATS_NEW_URL`** / **`LIBRETIME_UPDATE_FEED`** in `legacy/application/configs/constants.php`) must point at **this fork’s** Releases, not upstream’s.
 
 ### Check out a known release
 
@@ -39,201 +39,152 @@ git checkout main && git pull
 
 ---
 
-## 2026-04-22 — Release **v0.1.9-trixie** (docs + packaging)
+## Changelog (newest first)
 
-- Bumped fork **Major.Minor.Patch** to **0.1.9**: root **`VERSION`** and all component **`setup.py`** `version=` entries.
-- Removed root **`CHANGELOG.md`**; user-facing notes remain in this development log and on GitHub Releases.
-- **Git tag ref** on GitHub: **`0.1.9-trixie`** (leading **`v`** is rejected by repository rules on `refs/tags/`). Release title may still read **v0.1.9-trixie**.
+### 2026-04-22 — **v0.1.9-trixie** (version + documentation)
 
----
-
-## 2026-04-22 — Docs: versioning merged into this file
-
-- Removed redundant root **`VERSIONING.md`**. The **Release identity and versioning** section above is the only place for the tag / `VERSION` / setuptools table and rules; **README** deep-links to it.
+- Bumped fork semver to **0.1.9** in **`VERSION`** and all component **`setup.py`** files.
+- Removed root **`CHANGELOG.md`**; release notes live in this file and on GitHub Releases.
+- **Git tag ref:** **`0.1.9-trixie`** (repository tag rules disallow a leading `v` on `refs/tags/…-trixie`). Release titles may still use **v0.1.9-trixie** for readability.
+- Consolidated versioning documentation: removed redundant **`VERSIONING.md`**; **Release identity and versioning** above is the single reference; README links here.
 
 ---
 
-## 2026-04-22 — Release **v0.1.8-trixie** (canonical versioning)
+### 2026-04-22 — Uninstall script aligned with `./install`
 
-- **Single reference for tag / `VERSION` / setuptools:** section **Release identity and versioning** at the top of this file (no separate `VERSIONING.md` in repo root).
-- **Forge identity:** Git annotated tag **`v0.1.8-trixie`**, root **`VERSION`** remains **`0.1.8 trixie`** (semver + space + codename; `tools/version.sh` unchanged).
-- **Python packages:** all component **`setup.py`** files now declare **`0.1.8`** (replacing inherited **`4.5.0`** from upstream metadata) and **`url` / `project_urls`** → `https://github.com/stefanolanci/libretime-trixie` so `pip`/wheel metadata matches this fork.
-- **User-facing changelog:** at this release a root **`CHANGELOG.md`** was added (later **removed in v0.1.9-trixie** in favor of this file only). Legacy **`LIBRETIME_WHATS_NEW_URL`** / **`LIBRETIME_UPDATE_FEED`** and **`config-check.php`** release-notes link target **this fork’s** GitHub Releases (not upstream’s).
-
----
-
-## 2026-04-22 — `uninstall-libretime.sh` aligned with `./install`
-
-- **fail2ban:** removes the same drop-ins `install` deploys when fail2ban is enabled (`/etc/fail2ban/filter.d/{libretime-harbor,icecast-auth,nginx-libretime-login}.conf`, `action.d/libretime-conntrack-flush.conf`, `jail.d/91-libretime.conf`, `logrotate.d/libretime-harbor-auth`), then `fail2ban-client reload` (or `systemctl try-reload-or-restart fail2ban`) if the service is active — *before* `rm -rf /var/log/libretime` so jails are not left pointing at deleted log paths.
-- **Nginx HTTP logs:** also deletes `libretime.access.log` / `libretime.error.log` (not only the HTTPS proxy `libretime-proxy.*` pair).
-- **System user:** reads `User=` from `libretime-api.service` (default `libretime`) for `pkill` / `userdel`, matching a non-default `--user` on install; guards against an unexpected `User=root`.
-- **PostgreSQL / RabbitMQ:** parses `database.user`, `database.name`, `rabbitmq.user`, and `rabbitmq.vhost` from `/etc/libretime/config.yml` *before* removing `/etc/libretime`, and uses them in `dropdb` / `DROP ROLE` / `delete_user` / `delete_vhost` in `--remove-data` and `--purge-packages` (previously the script always assumed role/db/user `libretime` and vhost `/libretime`).
-- **`--purge-packages`:** adds **`fail2ban`** to the `apt-get purge` list (after our jail files are already removed) so a dedicated single-purpose radio host can strip the service entirely; on shared systems this remains dangerous, as documented.
-- **By design, unchanged:** UFW `allow` rules and any `127.0.1.1` line appended to `/etc/hosts` by the installer are not reverted (documented in script `--help` and README **Uninstall**).
-- **Bugfix:** the `for u in ...` service loop clobbered a temporary `u` used for user detection — the loop variable was renamed to `unit`.
+- **fail2ban:** removes the same drop-ins the installer may have added (filters, actions, jails, harbor logrotate) before deleting log trees, then reloads fail2ban when active.
+- **Nginx:** removes both HTTP site logs and HTTPS proxy logs for LibreTime vhosts.
+- **System user:** derives the application user from **`libretime-api.service`** (supports non-default **`--user`**).
+- **PostgreSQL / RabbitMQ:** reads database and broker identity from **`config.yml`** before it is removed for **`--remove-data`** / **`--purge-packages`** (no longer assumes fixed default names only).
+- **`--purge-packages`:** may purge **fail2ban** after LibreTime jail files are removed (destructive on shared hosts—documented in script help and README).
+- **Unchanged by design:** UFW rules and any **`127.0.1.1`** host line added by the installer are not reverted (documented).
+- **Bugfix:** service loop variable clash that could interfere with user detection.
 
 ---
 
-## 2026-04-22 — Installer hardening: upgrade path, idempotency, and satellite scripts
+### 2026-04-22 — Installer robustness (upgrades, retries, helpers)
 
-Multi-area cleanup of the root `install` script and of the Python/Bash helpers it invokes. No behavioral change for a successful first install; every change is scoped to make retries, upgrades, and partial-state recoveries predictable.
+Applies to **retries**, **upgrades**, and **partial first-install recovery**; a clean first install on a fresh system follows the same successful path as before.
 
-### Wizard UX polish (`install`)
+**Wizard**
 
-- Top-of-wizard hint mentions that **`./install --help`** lists every non-interactive flag, so users who outgrow the guided flow know where to look without re-reading the README.
-- **Certbot email** and **fail2ban** prompts are now dynamically pre-filled from `LIBRETIME_CERTBOT_EMAIL` and `LIBRETIME_SETUP_FAIL2BAN` when those variables are set in the environment or `.env`, matching the behavior of the other wizard prompts.
-- The fail2ban prompt line for the web login was reworded to **"LibreTime web application login"** (previously implied a specific reverse-proxy scenario that did not apply to HTTP mode).
-- `bantime` shown in the wizard fail2ban summary and in `installer/fail2ban/jail.d/91-libretime.conf` changed from **600 → 1800 s** (30 min), aligning with what is actually effective against brute-force retries without being too punitive for legitimate lockouts.
+- Wizard hints reference **`./install --help`** for full non-interactive flags.
+- Certbot email and fail2ban defaults respect **`LIBRETIME_CERTBOT_EMAIL`** and **`LIBRETIME_SETUP_FAIL2BAN`** when set (including via **`.env`**).
+- Fail2ban copy and effective **`bantime`** aligned with documented policy (**1800** s).
 
-### Bash hardening (`install`)
+**Shell behavior**
 
-- Added `set -o pipefail` on top of the existing `set -eu`, so pipelines fail loudly when an earlier command errors.
-- `cd "$SCRIPT_DIR"` at the top of the script: every `"${SCRIPT_DIR}/installer/..."` path and every relative reference now resolves against a known CWD, independent of how the user invoked `./install` (e.g. from `~` with an absolute path).
-- `python3` is now installed in the **Prepare** phase, before any helper (`tools/packages.py`) is invoked — previously `python3` was only guaranteed later in the flow.
+- **`set -o pipefail`** with **`set -eu`**; stable **`cd` to script directory**; **`python3`** installed before **`tools/packages.py`** runs.
 
-### Upgrade path (existing `config.yml` detected)
+**Upgrade path** (existing **`config.yml`**)
 
-A dedicated upgrade block runs before any destructive action and prints a summary of what is about to happen, then short-circuits on configuration drift:
+- Rehydrates **`public_url`** from disk when not passed on the CLI.
+- **Hard errors** on **`public_url`** or **`--user`** mismatch versus the live config (prevents silent drift).
+- Pre-upgrade summary of layout; optional short TTY countdown; HTTPS summary distinguishes proxy-only from Let’s Encrypt cert present.
 
-- **Public URL rehydration.** When `LIBRETIME_PUBLIC_URL` is not passed on the command line during an upgrade, it is read from `/etc/libretime/config.yml` so downstream logic (fail2ban placeholder substitution, HTTPS decision branch, UFW rules) stays aligned with the running system instead of falling back to defaults.
-- **`public_url` mismatch ⇒ hard error.** If the CLI-provided URL differs from the one in `config.yml`, the script refuses to continue with a self-documenting message (`"To change the public URL, edit ${CONFIG_FILEPATH} manually; to keep the current one, omit the positional URL"`). Prevents silent DB/config/URL drift on re-runs.
-- **`--user` mismatch ⇒ hard error.** If `--user` points at a UID that does not own the existing `config.yml`, the script stops and tells the user exactly how to reconcile (either re-run with the detected user, or perform the user migration manually — `chown`, DB ownership, service restarts). Prevents partially-chowned installs.
-- **Pre-upgrade warning summary.** Prints the detected layout (`config_file`, `public_url`, `storage`, `listen_port`, `https_mode`, `setup_icecast`, `setup_fail2ban`) and reminds the operator to keep upgrade flags aligned with the original install; includes a 5-second countdown on interactive TTYs (skipped under CI/pipes so non-interactive upgrades stay non-blocking).
-- **Smarter HTTPS detection in the summary.** Distinguishes `"proxy only (no TLS cert)"` from `"yes (TLS cert present)"` by probing `/etc/letsencrypt/live/<host>/fullchain.pem` when the HTTPS proxy vhost exists — the previous summary called them both "yes" even if Certbot had failed.
+**Credentials on retry**
 
-### Idempotent credential handling
+- PostgreSQL and RabbitMQ passwords are reset on retry when roles/users already exist so **`config.yml`** stays consistent with the stack.
 
-- **PostgreSQL.** On first-install retries (`is_first_install=true` but the role already exists), `install` now unconditionally runs `ALTER ROLE <user> WITH PASSWORD '<generated>'` so the password in the freshly written `config.yml.tmp` always matches what the database expects. Emits a warning so the admin knows why the password was reset.
-- **RabbitMQ.** Same treatment: if the broker user already exists, `rabbitmqctl change_password` is executed to keep `config.yml` in sync. Prevents the class of failure where a failed first install left credentials out of sync between `config.yml` and the stack.
+**Post-upgrade**
 
-### Post-upgrade service restart
+- Restarts active LibreTime units so new code is loaded without a manual step.
 
-- After a detected upgrade, the installer now restarts already-active LibreTime units (`libretime-api`, `libretime-playout`, `libretime-liquidsoap`, `libretime-analyzer`, `libretime-worker`) via `service_restart_if_active`, so the newly deployed Python/legacy code is picked up without requiring a separate manual step.
+**Helper scripts**
 
-### Satellite scripts (the previous "quality bottleneck")
+- **`tools/packages.py`:** deterministic package ordering; tolerant parsing; warns on invalid **`--exclude`** sections.
+- **`installer/icecast/patch_xml_ssl.py`:** idempotent Icecast TLS patch when **`bundle.pem`** is already configured.
+- **`installer/letsencrypt/renew-icecast-bundle.sh`:** safe no-op when Icecast is gone; syslog trail for renewal hook outcomes.
 
-- **`tools/packages.py`.** Fixed a real determinism bug: `list_packages` used to return `set(sorted(packages))` — `sorted()` returns a list, re-wrapping it in `set()` destroyed the ordering. `apt-get install` was fed a different permutation on every run; install logs were not diffable. Now returns a `List[str]`, sorted, and the CLI wrapper prints it with `"\n".join` / `" ".join` unchanged. Also: the `",".split()` delimiter is now tolerant of extra whitespace (`[d.strip() for d in distributions.split(",")]`), parentheses were added around the `not development and section == DEVELOPMENT_SECTION` clause to make operator precedence explicit, and an `stderr` warning is emitted for `--exclude` sections that are not present in any of the `packages.ini` files scanned.
-- **`installer/icecast/patch_xml_ssl.py`.** Made idempotent. A new `ALREADY_PATCHED_MARKER` (`<ssl-certificate>/etc/icecast2/bundle.pem</ssl-certificate>`) is checked first; if present, the script logs `"already contains bundle.pem ssl-certificate; skipping"` and exits **0** instead of the previous **1** that triggered `warning "could not patch icecast.xml for TLS"` on re-runs. The `<hostname>localhost</hostname>` replacement now degrades gracefully when the hostname has already been customized (informational message, no failure).
-- **`installer/letsencrypt/renew-icecast-bundle.sh`.** Hardened the Certbot deploy hook: `getent group icecast >/dev/null 2>&1 || exit 0` early-exits cleanly when Icecast is no longer installed (so a stale hook cannot fail the entire certificate renewal), and a `logger -t libretime-icecast-bundle` call writes a syslog trail on every skip/success so failed renewals are diagnosable from `/var/log/syslog` without having to dig into Certbot's own log.
-
-### `VERSION`
-
-- Bumped to `0.1.8 trixie`.
+**Version at this milestone:** **`0.1.8 trixie`** before the **0.1.9** bump above.
 
 ---
 
-## 2026-04-22 — Fail2ban security suite for LibreTime (opt-in)
+### 2026-04-22 — Optional fail2ban integration (LibreTime-oriented jails)
 
-- **Opt-in installer step.** New `LIBRETIME_SETUP_FAIL2BAN` variable (default `false`), matching `--setup-fail2ban` / `--no-setup-fail2ban` CLI flags, and a wizard prompt at the end of the guided setup (`"Enable fail2ban for LibreTime? [y/N]"`). Non-wizard installs without the flag or the env variable are unchanged — no new services are touched. Handled in `install`.
-- **Three jails, each strictly per-service.** New `installer/fail2ban/jail.d/91-libretime.conf` ships `libretime-harbor`, `icecast-auth`, and `nginx-libretime-login`. Each jail has its own filter, port set, nftables set, and action chain — a ban in one jail never affects sockets of another service. Policy aligned with the stock `sshd` jail (maxretry=5, findtime=3600, bantime=1800).
-- **Harbor: file-based jail that sidesteps the Debian 13 systemd backend regression.** Observed behavior with fail2ban 1.1.0 + `python3-systemd` 235 on Trixie: the `systemd` backend silently missed `_SYSTEMD_UNIT=libretime-liquidsoap.service` matches, so the jail never incremented even though `fail2ban-regex` confirmed the pattern. Worked around by writing a dedicated line from `playout/libretime_playout/liquidsoap/ls_script.liq` via `file.write(append=true)` on `/var/log/libretime/harbor-auth.log` (format: `libretime-harbor[<mount>] status=auth_ok|auth_failed ip=<client>`). Filter `installer/fail2ban/filter.d/libretime-harbor.conf` uses `datepattern = {^LN-BEG}`, jail uses `backend=pyinotify`. The write is outside the audio graph (runs in the Harbor handshake thread, not in the DSP thread), `append=true` on a <80 byte line is atomic per `write(2)` below PIPE_BUF, so it has no effect on the audio chain.
-- **Nginx: placeholder-driven port alignment between service and jail.** `@LIBRETIME_NGINX_PORTS@` in the jail template is substituted at install time — in HTTPS mode to `80,443`, in HTTP mode to `${LIBRETIME_LISTEN_PORT}` (default `8080`, overridable via `--listen-port` or env). Previous hard-coded `port = http,https` would have produced an `nftables` rule on ports 80/443 while nginx was actually listening on 8080; the ban was correctly emitted but targeted the wrong socket. The log path is similarly switched between `/var/log/nginx/libretime.access.log` (HTTP) and `/var/log/nginx/libretime-proxy.access.log` (HTTPS).
-- **Nginx log fd reopen after pre-creation.** The installer now runs `nginx -t && systemctl reload nginx` right after pre-creating the LibreTime access log with `install -m 0640 -o www-data -g adm -D /dev/null ...`. Without the reload, nginx kept writing to the orphan inode of the previous file and the jail saw an empty log.
-- **Icecast: reads `/var/log/icecast2/access.log` for HTTP 401 on `/admin/`** via `installer/fail2ban/filter.d/icecast-auth.conf`. Ports `8000,8443`.
-- **`libretime-conntrack-flush` action — scoped socket kill for TCP keep-alive.** New `installer/fail2ban/action.d/libretime-conntrack-flush.conf`. Default nftables/iptables banactions only drop packets with `ct state NEW`, so HTTP keep-alive sockets (and, in theory, long-lived Icecast admin sockets) pre-dating the ban keep flowing. The new action closes those sockets using iproute2 `ss -K` (no extra package; requires `CONFIG_INET_DIAG_DESTROY=y`, default on Debian 13). Important: the `ports="..."` parameter is scoped to the jail's own service ports, so a ban in `nginx-libretime-login` never touches Icecast/Harbor/SSH sockets of the same IP. Attached only to the web/Icecast jails; Harbor does not need it because Liquidsoap opens a new TCP for each auth attempt.
-- **Logrotate for the Harbor auth log.** New `installer/fail2ban/logrotate/libretime-harbor-auth.conf` (weekly, 12 rotations, `compress` + `delaycompress`, `create 0640 libretime adm`). No `postrotate` hook is needed because Liquidsoap opens the file per write (no persistent fd).
-- **Functional ban/unban validation (per-jail).** Five failed `POST /login` → `nginx-libretime-login` increments → `NOTICE Ban`; materialized `nftables` rule is `tcp dport <configured-port> ip saddr @addr-set-nginx-libretime-login reject with icmp port-unreachable`; `ss -K` closes pre-existing keep-alive sockets scoped to the jail port; browser immediately reports "site unreachable" for new connections; `unbanip` restores normal traffic. Harbor jail exercised on both `main` (8001) and `show` (8002) mounts, Icecast jail exercised by repeated 401s on `/admin/`. Port-swap sanity run at 3345 confirmed the `@LIBRETIME_NGINX_PORTS@` substitution tracks the actual listen port.
-- **End-to-end wizard install on a clean Debian 13 Trixie snapshot.** `./install --wizard` answered **`y`** at the fail2ban prompt materializes `/etc/fail2ban/filter.d/{libretime-harbor,icecast-auth,nginx-libretime-login}.conf`, `/etc/fail2ban/action.d/libretime-conntrack-flush.conf`, `/etc/fail2ban/jail.d/91-libretime.conf` (placeholders resolved), `/etc/logrotate.d/libretime-harbor-auth`, and pre-creates `/var/log/libretime/harbor-auth.log` (`libretime:adm 0640`) plus the nginx access log with the post-`install` nginx reload. `fail2ban.service` starts clean with all four jails active (`sshd, libretime-harbor, icecast-auth, nginx-libretime-login`). Ban/unban tests re-executed on the freshly wizarded target pass identically to the in-place run.
-- **Commit reference:** `feat(installer): finalize fail2ban security suite (end of development)` (code); wizard acceptance run recorded 2026-04-22 on LAN Debian 13 Trixie target.
+- **Opt-in** via **`LIBRETIME_SETUP_FAIL2BAN`**, **`--setup-fail2ban` / `--no-setup-fail2ban`**, or wizard prompt. Default: **disabled**; installs without the flag do not touch fail2ban.
+- **Three jails:** Harbor (Liquidsoap auth), Icecast **`/admin`** HTTP 401, Nginx LibreTime **`/login`**. Policy aligned with common **`sshd`** timing (**maxretry**, **findtime**, **bantime**).
+- **Harbor:** dedicated log file written from Liquidsoap for reliable pattern matching on Trixie; filter uses file backend.
+- **Nginx:** jail port list substituted at install time for HTTP vs HTTPS proxy modes so bans target the real listener ports.
+- **Icecast:** filters admin authentication failures from the Icecast access log.
+- **Conntrack flush action:** optional companion action closes long-lived TCP sessions on ban for the web and Icecast jails so bans take effect immediately for keep-alive clients; scoped to each jail’s ports.
+- **Logrotate** for the Harbor auth log.
 
 ---
 
-## 2026-04-21 — Pre-login player buttons: early initialization on embed DOM ready
+### 2026-04-21 — Pre-login player: faster bottom-bar controls
 
-- **Root cause (runtime-verified):** on the public pre-login page, schedule/about/podcast buttons were appended by the parent page only inside the `#player_iframe.load(...)` callback. The iframe `load` event was delayed by late resource/media completion, so the buttons appeared several seconds after the rest of the page.
-- **`legacy/application/views/scripts/embed/player.phtml`:** the embed now posts a same-origin message (`libretime:player-embed-dom-ready`) to the parent as soon as the iframe document reaches `$(document).ready(...)`.
-- **`legacy/application/views/scripts/index/index.phtml`:** added `initPreloginBottomButtons()` and moved button wiring to an idempotent initializer triggered by the new DOM-ready message, with existing iframe `load` as a safe fallback.
-- **Result:** bottom-bar controls become visible much earlier and no longer depend on full iframe load completion.
-- **`VERSION`:** bumped to `0.1.7 trixie`.
+- Embed signals the parent when the iframe DOM is ready; bottom actions (schedule / about / podcast) wire up without waiting for full iframe **`load`**, which could be delayed by slow subresources.
+
+**Version:** **`0.1.7 trixie`**.
 
 ---
 
-## 2026-04-21 — Icecast listener stability tuning (burst disabled)
+### 2026-04-21 — Icecast: reduce connect burst for unstable clients
 
-- **`installer/icecast/icecast.xml`:** changed Icecast global listener burst behavior to `burst-on-connect=0` and `burst-size=0` to avoid short repeated startup slices on unstable/mobile paths where clients rapidly reconnect and can replay the same initial buffered segment.
-- **Runtime validation on Jupiter:** after applying the same configuration in production, listener sessions became materially longer in repeated stop/play/pause stress tests (including mobile app and browser players), while the playout chain stayed healthy (`stream_level_probe` remained active without service restarts in the verified window).
-- **`VERSION`:** bumped to `0.1.6 trixie`.
+- **`installer/icecast/icecast.xml`:** **`burst-on-connect=0`** and **`burst-size=0`** by default to reduce repeated startup audio slices when clients reconnect often (e.g. mobile paths).
 
----
-
-## 2026-04-21 — Liquidsoap 2.3 deprecation cleanup and idempotent web-stream restart
-
-- **`playout/libretime_playout/liquidsoap/templates/entrypoint.liq.j2`:** replaced the legacy `set("path.to.key", value)` calls with the Liquidsoap 2.3 assignment syntax `settings.path.to.key := value` across `log.file.path`, `server.telnet` / `server.telnet.bind_addr` / `server.telnet.port`, `harbor.bind_addrs`, and the `harbor.ssl.*` block. The generated `radio.liq` no longer carries LS 2.3 deprecation warnings at startup.
-- **`playout/libretime_playout/liquidsoap/ls_script.liq`:** replaced deprecated `audio_to_stereo(...)` with `stereo(...)` on the automation queue source and on the `/show` and `/main` harbor inputs; replaced `map_metadata(...)` with `metadata.map(...)` on the queue-notify, schedule append-title and offline-label chains.
-- **`playout/libretime_playout/liquidsoap/ls_lib.liq`:** replaced the last deprecated `json_of(m)` call in `notify_stream` with `json.stringify(m)`. With these three files `liquidsoap --check` on the generated script emits zero deprecation warnings on LS 2.3.
-- **`playout/libretime_playout/liquidsoap/ls_lib.liq`:** added `start=false` to the dummy-URL `input.http` bootstrap so the HTTP source stays idle until a real web-stream URL is armed through the `restart` telnet command. This removes the repeated 2-second reconnect loop against the bootstrap sentinel URL that was flooding the Liquidsoap journal while no web stream was active.
-- **`playout/libretime_playout/liquidsoap/ls_lib.liq`:** made the `input.http_restart` telnet command **idempotent** — it keeps a `last_url` reference and skips the `http.stop` / `http.start` cycle when the same URL is re-asserted while the HTTP source is already streaming. Playout can re-issue `http.restart <same url>` on schedule-refresh events while a web-stream slot is still armed; the previous non-idempotent behaviour produced a sub-frame track boundary (Liquidsoap "Source created multiple tracks in a single frame!") that corrupted PCM frames sent to the local Icecast outputs, triggering **Broken pipe** on `/main` and `/main-low` and briefly disconnecting listener apps. First activation, real URL changes, and network-recovery restarts keep going through the full stop/start cycle; the idempotent path only short-circuits the redundant same-URL re-assertions and is logged as `idempotent no-op`.
-- **`VERSION`:** bumped to `0.1.5 trixie` for Settings → Status and packaging consistency.
+**Version:** **`0.1.6 trixie`**.
 
 ---
 
-## 2026-04-20 — Liquidsoap handoff hardening (web stream + live cut behavior)
+### 2026-04-21 — Liquidsoap 2.3 cleanup and web-stream stability
 
-- **`playout/libretime_playout/liquidsoap/ls_script.liq`:** hardened the automation source-selection guard so the queue branch remains selected while web stream handoff state is still active (`schedule_streaming() or web_stream_enabled() or web_stream_armed() or web_stream_id() != "-1"`). This reduces unintended fallbacks during short handoff windows.
-- **`playout/libretime_playout/liquidsoap/ls_script.liq`:** normalized web stream state transitions (`web_stream_id` initialization, trimmed IDs in `web_stream_set_id`, explicit `web_stream_armed` set/clear on start/stop) so control flow is deterministic across transient API updates.
-- **`playout/libretime_playout/liquidsoap/client/_client.py` + playout queue sync path:** when the currently playing scheduled row is removed/changed, playout now requests a targeted force-cut on the active queue slot and immediately re-syncs queue content, keeping automation aligned with schedule edits.
+- **Deprecation-free** LS 2.3 syntax in templates and **`ls_script.liq`** / **`ls_lib.liq`** (**settings** assignments, **`stereo`**, **`metadata.map`**, **`json.stringify`**).
+- **Dummy HTTP input** starts idle (**`start=false`**) so the journal is not flooded when no web stream is armed.
+- **`input.http_restart`** skips redundant stop/start when the same URL is already streaming—avoids PCM glitches and Icecast disconnects during schedule refreshes.
 
----
-
-## 2026-04-19 — README and development log vs installer (Debian conventions)
-
-- **README:** expanded **“What `./install` does”** to match the root `install` script (distribution gate, Prepare and `sudo`/`git`/`make`/`ed` bootstrap, first-install vs upgrade, `installer/` templates, PostgreSQL/RabbitMQ/Icecast, Python venv and `tools/packages.py`, legacy build, Nginx, HTTPS/Certbot/Icecast hooks, UFW, finalize). Clarified **Debian-first** usage: run **`./install` as root** without assuming `sudo` is pre-installed; the installer’s Prepare step installs the **`sudo`** package so documented **`sudo -u libretime`** steps work **after** install, with **`runuser` / `su`** alternatives for migrations.
-- **`docs/development-log.md`:** removed per-host operational duplication; **post-install and firewall** remain the single source of truth in the root **README**.
+**Version:** **`0.1.5 trixie`**.
 
 ---
 
-## 2026-04-18 — Release v0.1.3-trixie (GitHub) and workflow docs
+### 2026-04-20 — Web-stream handoff and schedule edits
 
-- **Distribution label:** `VERSION` set to **0.1.3 trixie** for Settings → Status and packaging consistency.
-- **GitHub:** release/tag **v0.1.3-trixie** replaces **v0.1.2-trixie** (includes prior `main` fixes such as install wizard HTTP/public URL handling and `development-log` policy).
-
----
-
-## 2026-04-18 — Install wizard: HTTP URL normalization (typos + implicit listen port)
-
-- **`install` (root script):** `wizard_fix_http_scheme_typos` corrects common mistakes (`http:host`, `http:/host`) to valid `http://…`.
-- **`wizard_normalize_http_public_url`:** for plain `http://` URLs without an explicit TCP port, append **`LIBRETIME_LISTEN_PORT`** (same as `--listen-port`) so browser Origin/CORS matches Nginx; IPv6 bracketed hosts and explicit `:port` left unchanged.
-- **Wizard copy:** documents that omitting the port in HTTP mode auto-appends the listen port.
+- Automation source selection stays on the queue path while web-stream handoff state is active; clearer state transitions for web stream IDs.
+- When the playing schedule row is removed or changed, playout can force-cut and re-sync the queue so on-air audio matches the schedule.
 
 ---
 
-## 2026-04-16 — Public radio page (responsive player + schedule widget)
+### 2026-04-18 — Install wizard: HTTP public URL normalization
 
-- **Rollback tag:** `rollback/pre-radio-ux-2026-04-16` (annotated) on the commit before the embed UI changes.
-- **`premium_player.css`:** flex toolbar; “now playing” uses `min-width: 0` and wrapping (removed `white-space: nowrap` that clipped title/artist); dropped media queries that squeezed `.on_air` to 30–50%; mobile: fixed strip above the bar with readable text.
-- **Post-deploy fix:** `flex_spacer` must not use `flex-grow` (it left half the bar empty); `margin-left: auto` on `.schedule_btn`; schedule tabs default to the station’s **current calendar day** (`currentDayOfMonth`), not always the first day.
-- **`radio-page.css`:** `.wrapper` prevents horizontal overflow; tabs/iframe centered with `min()` + `translateX` instead of a fixed negative margin.
-- **`weekly-program.phtml` + `EmbedController`:** embed viewport; station timezone for `toLocaleTimeString`; show day key from **UTC** aligned with PHP `weekDays`.
-- **`weekly-schedule-widget.css` / `station-podcast.css`:** fluid flex tabs; jPlayer podcast block `max-width: 100%`.
+- Corrects common **`http:`** typos to valid **`http://`** URLs.
+- For plain **`http://`** URLs without an explicit port, appends the app listen port so browser origin behavior matches Nginx.
 
 ---
 
-## 2026-04 — PLC dashboard and playout telemetry
+### 2026-04-16 — Public radio page (responsive player and schedule widget)
 
-- **PLC strip in header** (`legacy/…/header.phtml`, `styles.css`, `dashboard.js`): six-bit synoptic with **PLC REAL** / **PLC LOGIC** labels; **LNK, FLW, AUD, ICE** (real chain) and **FET, PLAY** (logic) in a aligned grid; **State / Detail** copy plus anomaly row.
-- **Colour severity** on the status row (and anomalies when present): green = nominal (`111111`), yellow = non-blocking anomaly, red = critical or stale data; spacing between the lamp matrix and the first text row.
-- **Playout backend:** `PipelineMonitor` in `playout/…/pipeline.py` (thread) aggregates signals (level/link/flow probe, Icecast JSON, schedule, `.now_playing_sid`) and posts JSON to **`/api/playout-state`** for the UI; `stream_level_probe.py`, `main.py`, and Liquidsoap client tweaks for consistency with the audio chain.
-- **Assets:** `legacy/application/assets.json` refreshed after CSS/JS edits (browser cache checksums).
-
----
-
-## 2026-04 — Harbor live / Master & Show (fork context)
-
-- **Main** (typical port **8001**, mount `/main`) and **show** (**8002**, `/show`) switchovers exercised on a test VPS: `harbor:input_main` / `harbor:input_show` logs, `switch_source` for `master_dj` / `live_dj`, Liquidsoap transitions and return to automation without notable service errors in journals.
+- Player toolbar and “now playing” layout: wrapping, spacing, mobile strip; schedule button alignment; schedule tabs default to the **current calendar day** in the station timezone.
+- **`radio-page.css`:** overflow and centered tab layout; weekly embed uses station timezone helpers.
+- Podcast block and weekly widget styles: fluid layout and **`max-width`** constraints.
 
 ---
 
-## Additional fork highlights (see also README “Changes in this fork”)
+### 2026-04 — PLC dashboard and playout telemetry
 
-- **Station podcast:** Publish from Tracks restored; episode metadata persistence; **My Podcast** navigation and DataTables behaviour fixes.
-- **Public radio page:** configurable background image/fit in General Settings; homepage rendering with dark overlay.
-- **Localization:** login locale persistence (cookie + preference); PHP 8.4 gettext bootstrap; string pass across `en_US`, `en_GB`, `it_IT`, `fr_FR`, `es_ES`, `pt_BR`.
-- **First-track level:** `schedule_streaming` enabled only after `PypoPush` seeds Liquidsoap’s `request.queue` so replay-gain metadata exists for `amplify` on the first item.
-- **Live / API order:** DB connection state updated **before** RabbitMQ `switch_source` in legacy controllers so `GET /api/v2/stream/state` matches playout.
-- **Liquidsoap 2.3:** harbor show/main no longer gated on `source.is_ready(...)` alone when PCM is valid.
-- **Schedule / autoplaylist:** week overlap and autoplaylist fill fixes aligned with upstream issues [#3235](https://github.com/libretime/libretime/issues/3235), [#3226](https://github.com/libretime/libretime/issues/3226).
-- **PHP 8.4 / Python / JS / Liquidsoap / installer:** compatibility and cleanup as summarized in the root README.
+- **Header PLC strip:** six-lamp synoptic (**LNK, FLW, AUD, ICE** plus logic indicators) with **State / Detail** text and severity coloring.
+- **Backend:** **`PipelineMonitor`** aggregates playout/Icecast/schedule signals and posts JSON to **`/api/playout-state`** for the dashboard; related probe and Liquidsoap client adjustments.
+- Assets refreshed for cache-busting after CSS/JS changes.
 
 ---
 
-*Last log update: 2026-04-22 (uninstall-libretime.sh aligned with install — fail2ban, logs, system user, PG/Rabbit identity from config; plus the installer-hardening and fail2ban work from the same day).*
+### 2026-04 — Harbor live inputs (master / show)
+
+- Switching between automation and live **Harbor** sources (**main** / **show**) exercised for typical mounts and **`switch_source`** flows; transitions return to automation without playout errors in test scenarios.
+
+---
+
+## Standing fork highlights (see also README “Changes in this fork”)
+
+- **Station podcast:** publish-from-tracks workflow, episode metadata, **My Podcast** navigation and DataTables behavior.
+- **Public radio page:** configurable background image and fit in General Settings; homepage rendering with overlay.
+- **Localization:** login locale persistence; PHP 8.4 gettext bootstrap; string updates across **`en_US`**, **`en_GB`**, **`it_IT`**, **`fr_FR`**, **`es_ES`**, **`pt_BR`**.
+- **First scheduled track:** **`schedule_streaming`** after the queue is seeded so replay-gain metadata exists for the first item.
+- **Live vs API:** database source state updated before **`switch_source`** messaging so **`GET /api/v2/stream/state`** matches playout.
+- **Liquidsoap 2.3:** harbor inputs not gated solely on **`source.is_ready`** when PCM is valid.
+- **Calendar / autoplaylist:** week overlap and fill behavior aligned with upstream discussions [#3235](https://github.com/libretime/libretime/issues/3235), [#3226](https://github.com/libretime/libretime/issues/3226).
+- **PHP / Python / JS / installer:** compatibility and cleanup as summarized in the root README.
+
+---
+
+*Last updated: 2026-04-22.*

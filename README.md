@@ -1,6 +1,6 @@
 # LibreTime (Debian Trixie)
 
-**Distribution:** [libretime-trixie](https://github.com/stefanolanci/libretime-trixie) **v0.1.9-trixie** (release line). **Git tag on GitHub:** **`0.1.9-trixie`** (same `0.1.9` triple as `VERSION` / setuptools; this remote’s rules disallow a leading **`v`** on `refs/tags/…-trixie`). Mapping and rules: **[docs/development-log.md](docs/development-log.md#release-identity-and-versioning)**.
+**Distribution:** [libretime-trixie](https://github.com/stefanolanci/libretime-trixie) **v0.1.9-trixie** (release line). **Git tag** (annotated checkout): **`0.1.9-trixie`** — same **`0.1.9`** triple as **`VERSION`** and Python packages; the tag ref has **no** leading **`v`** (see **[Release identity](docs/development-log.md#release-identity-and-versioning)**).
 
 Native radio automation for **Debian 13 (Trixie)**. Installation uses the root `install` script (systemd units, no containers).
 
@@ -88,7 +88,7 @@ From a **clean clone** of this fork, **`./install`** expects **`installer/`** (i
 
 ## Installation
 
-From the repository root, make scripts executable if needed (ZIP, copies from Windows, etc.):
+From the repository root, make scripts executable if needed (e.g. archives or copies that dropped the executable bit):
 
 ```bash
 chmod +x install tools/version.sh installer/uninstall-libretime.sh installer/letsencrypt/renew-icecast-bundle.sh
@@ -276,13 +276,13 @@ Targeted fixes for **Debian 13 / Liquidsoap 2.3** and races between UI, API, and
 - **Liquidsoap cleanup:** dead functions (`transition_default`, `to_live`, `cross_http`, `http_fallback`) removed from `ls_lib.liq`; `make_ouput_` typo corrected to `make_output_` in both `ls_lib.liq` and the Jinja output template.
 - **Python modernization:** `datetime.utcnow()` replaced with `datetime.now(timezone.utc)` across the playout package; `UnboundLocalError` risk fixed in analyzer `message_listener.py`.
 - **Install robustness:** `--wizard` validates TTY, blocks upgrade usage, and rejects combined positional URL; flags requiring arguments now fail with a clear message instead of a cryptic `shift` error; first install without a URL or `--wizard` is now blocked.
-- **Installer hardening (upgrade path, idempotency, satellite scripts):** upgrades now rehydrate `public_url` from the live `config.yml` when absent, **hard-error on `public_url` or `--user` mismatch** (preventing silent config drift), print a pre-upgrade summary of the detected layout with a non-blocking TTY countdown, and restart already-active LibreTime services (`libretime-api`, `libretime-playout`, `libretime-liquidsoap`, `libretime-analyzer`, `libretime-worker`) after the upgrade completes. HTTPS detection in the summary distinguishes "proxy only (no TLS cert)" from "TLS cert present" by probing `/etc/letsencrypt/live/<host>/fullchain.pem`. First-install retries now **reset PostgreSQL and RabbitMQ passwords** (`ALTER ROLE` / `rabbitmqctl change_password`) to keep `config.yml` in sync, eliminating the mismatch class caused by a previously-aborted first install. The script itself is hardened with `set -o pipefail`, `cd "$SCRIPT_DIR"` for stable relative paths, and an earlier `python3` install so the `tools/packages.py` helper is always available. Satellite scripts were audited and fixed: `tools/packages.py` returns a deterministically sorted list (the previous `set(sorted(...))` destroyed the ordering and made install logs non-diffable), tolerates whitespace in the distributions delimiter, and warns on unknown `--exclude` sections; `installer/icecast/patch_xml_ssl.py` is now idempotent (detects `bundle.pem` already wired and exits 0 cleanly instead of emitting a false "could not patch icecast.xml" warning on re-runs); `installer/letsencrypt/renew-icecast-bundle.sh` skips cleanly when Icecast has been uninstalled (`getent group icecast || exit 0`) and writes a syslog trail via `logger -t libretime-icecast-bundle` for every skip/success so renewal failures are diagnosable from `/var/log/syslog`.
-- **Opt-in fail2ban security suite:** wizard step, CLI flags (`--setup-fail2ban` / `--no-setup-fail2ban`), and `LIBRETIME_SETUP_FAIL2BAN` env var deploy three independent jails (`libretime-harbor`, `icecast-auth`, `nginx-libretime-login`) aligned with the stock `sshd` policy (`maxretry=5`, `findtime=3600`, `bantime=1800`). Harbor auth is logged via `ls_script.liq` into a dedicated file so the jail is immune to the fail2ban 1.1.0 + `python3-systemd` systemd-backend regression on Debian 13. The nginx jail port is driven by a placeholder substituted at install time (HTTP mode: `LIBRETIME_LISTEN_PORT`; HTTPS mode: `80,443`), so the `nftables` rule always targets the real service socket. A companion `libretime-conntrack-flush` action closes ESTABLISHED TCP keep-alive sockets of the banned IP, strictly scoped to the jail's own ports, so browsers cannot keep hitting `/login` over pre-existing connections and bans stay per-service. Logrotate entry for `/var/log/libretime/harbor-auth.log` (weekly × 12, compress + delaycompress). Default: **disabled**.
+- **Installer robustness (upgrades, retries, helpers):** upgrades rehydrate `public_url` when omitted, **fail fast** on `public_url` or `--user` mismatches, print a concise pre-upgrade summary (HTTPS vs proxy-only detection via Let’s Encrypt paths), restart active LibreTime services after upgrade, and on first-install retries **resync PostgreSQL/RabbitMQ passwords** with `config.yml`. The script uses **`set -o pipefail`**, a stable **`cd` to its directory**, and installs **`python3`** before **`tools/packages.py`**. **`tools/packages.py`** emits a deterministic package order; **`installer/icecast/patch_xml_ssl.py`** is idempotent when TLS is already configured; **`installer/letsencrypt/renew-icecast-bundle.sh`** no-ops cleanly if Icecast was removed and logs renewals to syslog for operations.
+- **Opt-in fail2ban suite:** wizard, CLI (`--setup-fail2ban` / `--no-setup-fail2ban`), and **`LIBRETIME_SETUP_FAIL2BAN`** deploy three jails—Harbor Liquidsoap auth (dedicated log), Icecast **`/admin`** failures, Nginx LibreTime **`/login`**—with timing aligned to common **`sshd`** defaults. Harbor events are written from `ls_script.liq` to a stable log path; Nginx jail ports match HTTP vs HTTPS proxy installs; optional **`libretime-conntrack-flush`** closes keep-alive sockets on ban for web/Icecast jails. Harbor logrotate (weekly, compressed). Default: **disabled**.
 - **Version label:** root `VERSION` file (e.g. `0.1.9 trixie`); `tools/version.sh` does **not** overwrite it when it already contains a semver. **Git tag (this repo):** **`M.m.p-trixie`** without a leading **`v`** (e.g. **`0.1.9-trixie`**; see **[docs/development-log.md — Release identity](docs/development-log.md#release-identity-and-versioning)**).
 
-A chronological **development log** (English) is maintained in [`docs/development-log.md`](docs/development-log.md); update it when you land meaningful fork changes.
+A **development log** (English), including release versioning rules, is in [`docs/development-log.md`](docs/development-log.md).
 
-After `git pull` on an installed host, redeploy changed paths (legacy PHP, playout, Liquidsoap) and restart services as usual.
+After updating the installed tree from version control, redeploy changed application paths (legacy PHP, playout, Liquidsoap) and restart services as needed.
 
 ---
 
@@ -316,7 +316,7 @@ journalctl -u libretime-api -u libretime-playout -u libretime-liquidsoap \
 
 Text logs: `/var/log/libretime/` (`legacy.log`, `playout.log`, `analyzer.log`, …).
 
-If you maintain a local copy of a stream diagnostic script (e.g. one that walks systemd, Icecast `status-json`, and playout/Liquidsoap journals before a short PCM probe), use it alongside the journal commands above.
+For stream or codec issues, combine the commands above with Icecast **`status-json`**, Liquidsoap telnet/API checks, and playout logs under **`/var/log/libretime/`** as appropriate for your setup.
 
 ---
 
