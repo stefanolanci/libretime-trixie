@@ -13,9 +13,12 @@ body {
     left: 0px;
     right: 0px;
     bottom: 0px;
-    height: 120px;
+    min-height: 120px;
+    height: auto;
     background: #fff;
     display: flex;
+    align-items: center;
+    box-sizing: border-box;
 }
 
 .bottom_bar .cont_btn {
@@ -39,28 +42,37 @@ body {
 
 .on_air {
     margin-left: 40px;
-    flex-grow: 1;
-    overflow: hidden;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: visible;
 }
 
+/* Autore + titolo: testo pieno, a capo (es. autore, titolo su riga sotto) */
 .bottom_bar p.now_playing {
     color: #222222;
     font-size: 26px;
     font-weight: 300;
     float: left;
-    margin: 28px 0px;
+    margin: 20px 8px 20px 0;
     width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    box-sizing: border-box;
+    line-height: 1.3;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
 }
 
 .bottom_bar p.now_playing span {
     display: block;
     font-weight: 100;
     width: 100%;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    margin-top: 0.2em;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
 }
 
 .bottom_bar .button {
@@ -137,7 +149,8 @@ body {
 
 @media (max-width: 780px) {
     .bottom_bar {
-        height: 80px;
+        min-height: 80px;
+        height: auto;
     }
 
     .bottom_bar .flex_spacer {
@@ -155,12 +168,18 @@ body {
         font-size: 18px;
         margin: 10px 10px;
         color: #fff;
-        white-space: nowrap;
+        white-space: normal;
+        overflow: visible;
+        line-height: 1.35;
+        overflow-wrap: break-word;
+        word-wrap: break-word;
     }
 
     .bottom_bar p.now_playing span {
-        display: inline-block;
-        padding-left: 10px;
+        display: block;
+        font-weight: 100;
+        margin-top: 0.25em;
+        padding-left: 0;
     }
 
     /*.on_air {
@@ -169,11 +188,13 @@ body {
     .on_air {
         margin-left: 0px;
         position: absolute;
-        top: -82px;
+        top: -120px;
         left: 0px;
         right: 0px;
         padding-top: 40px;
         width: 100%;
+        box-sizing: border-box;
+        overflow: visible;
         background: rgba(0,0,0,0);
         background: -moz-linear-gradient(top, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 69%, rgba(0,0,0,1) 100%);
         background: -webkit-gradient(left top, left bottom, color-stop(0%, rgba(0,0,0,0)), color-stop(69%, rgba(0,0,0,1)), color-stop(100%, rgba(0,0,0,1)));
