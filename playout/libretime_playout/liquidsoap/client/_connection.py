@@ -1,12 +1,13 @@
 import logging
 import socket
+from threading import RLock
 from pathlib import Path
 from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 
-class InvalidConnection(Exception):
+class InvalidConnection(ConnectionError):
     """
     Call was made with an invalid connection
     """
@@ -20,6 +21,7 @@ class LiquidsoapConnection:
 
     _sock: Optional[socket.socket] = None
     _eof = b"END"
+    _lock: RLock
 
     def __init__(
         self,
@@ -42,83 +44,104 @@ class LiquidsoapConnection:
         self._host = host
         self._port = port
         self._timeout = timeout
+        self._lock = RLock()
 
     def address(self) -> str:
         return f"{self._host}:{self._port}" if self._path is None else str(self._path)
 
     def __enter__(self):
-        self.connect()
-        return self
-
-    def __exit__(self, exc_type, exc_value, _traceback):
-        self.close()
-
-    def connect(self):
+        self._lock.acquire()
         try:
-            logger.debug("connecting to %s", self.address())
-
-            if self._path is not None:
-                self._sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-                self._sock.settimeout(self._timeout)
-                self._sock.connect(str(self._path))
-            else:
-                self._sock = socket.create_connection(
-                    address=(self._host, self._port),
-                    timeout=self._timeout,
-                )
-
-        except (OSError, ConnectionError):
-            self._sock = None
+            self.connect()
+            return self
+        except Exception:
+            self._lock.release()
             raise
 
-    def close(self):
-        if self._sock is not None:
-            logger.debug("closing connection to %s", self.address())
+    def __exit__(self, exc_type, exc_value, _traceback):
+        try:
+            self.close()
+        finally:
+            self._lock.release()
 
+    def connect(self):
+        with self._lock:
             try:
-                self.write("exit")
-                # Reading for clean exit
-                while self._sock.recv(1024):
-                    continue
+                logger.debug("connecting to %s", self.address())
 
-            finally:
-                self._sock.close()
+                if self._path is not None:
+                    self._sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                    self._sock.settimeout(self._timeout)
+                    self._sock.connect(str(self._path))
+                else:
+                    self._sock = socket.create_connection(
+                        address=(self._host, self._port),
+                        timeout=self._timeout,
+                    )
+
+            except (OSError, ConnectionError):
                 self._sock = None
+                raise
+
+    def close(self):
+        with self._lock:
+            sock = self._sock
+            if sock is not None:
+                logger.debug("closing connection to %s", self.address())
+
+                try:
+                    try:
+                        self.write("exit")
+                        # Reading for clean exit
+                        while sock.recv(1024):
+                            continue
+                    except (OSError, ConnectionError):
+                        logger.debug("connection to %s already closed", self.address())
+
+                finally:
+                    try:
+                        sock.close()
+                    finally:
+                        self._sock = None
 
     def write(self, *messages: str):
-        if self._sock is None:
-            raise InvalidConnection()
+        with self._lock:
+            sock = self._sock
+            if sock is None:
+                raise InvalidConnection()
 
-        for message in messages:
-            logger.debug("sending %s", message)
-            buffer = message.encode(encoding="utf-8")
-            buffer += b"\n"
+            for message in messages:
+                logger.debug("sending %s", message)
+                buffer = message.encode(encoding="utf-8")
+                buffer += b"\n"
 
-            self._sock.sendall(buffer)
+                sock.sendall(buffer)
 
     def read(self) -> str:
-        if self._sock is None:
-            raise InvalidConnection()
+        with self._lock:
+            sock = self._sock
+            if sock is None:
+                raise InvalidConnection()
 
-        chunks = []
-        while True:
-            chunk = self._sock.recv(1024)
-            if not chunk:
-                break
+            chunks = []
+            while True:
+                chunk = sock.recv(1024)
+                if not chunk:
+                    break
 
-            eof_index = chunk.find(self._eof)
-            if eof_index >= 0:
-                chunk = chunk[:eof_index]
+                eof_index = chunk.find(self._eof)
+                if eof_index >= 0:
+                    chunk = chunk[:eof_index]
+                    chunks.append(chunk)
+                    break
+
                 chunks.append(chunk)
-                break
 
-            chunks.append(chunk)
+            buffer = b"".join(chunks)
+            buffer = buffer.replace(b"\r\n", b"\n")
+            buffer = buffer.rstrip(b"END")
+            buffer = buffer.strip(b"\n")
+            message = buffer.decode("utf-8")
 
-        buffer = b"".join(chunks)
-        buffer = buffer.replace(b"\r\n", b"\n")
-        buffer = buffer.rstrip(b"END")
-        buffer = buffer.strip(b"\n")
-        message = buffer.decode("utf-8")
-
-        logger.debug("received %s", message)
-        return message
+            logger.debug("received %s", message)
+            return message

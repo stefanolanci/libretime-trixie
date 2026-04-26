@@ -108,25 +108,51 @@ class LiquidsoapClient:
             cmd = f"request_queue.{queue_id + 1}.push {entry}"
         else:
             cmd = f"request_queue.push {entry}"
-        with self.conn:
-            self.conn.write(cmd)
-            reply = self.conn.read()
-            stripped = reply.strip().splitlines()
-            if stripped and not stripped[0].lstrip("-").isdigit():
-                preview = entry if len(entry) <= 240 else entry[:240] + "…"
-                logger.error(
-                    "unexpected liquidsoap push reply for %s: %s (entry preview: %s)",
-                    cmd.split(" ", 1)[0],
-                    reply,
-                    preview,
-                )
+        connection_errors = (InvalidConnection, OSError, ConnectionError)
+        for attempt in range(3):
             try:
-                self._set_var("show_name", self._quote(show_name))
-            except Exception:
+                with self.conn:
+                    self.conn.write(cmd)
+                    try:
+                        reply = self.conn.read()
+                    except connection_errors as exception:
+                        # If sendall() succeeded, Liquidsoap usually has the push already.
+                        # Retrying the same push can duplicate the request, so keep playout
+                        # moving and let the schedule tracker mark this queue as occupied.
+                        logger.warning(
+                            "lost telnet reply after queue push; assuming push landed "
+                            "(queue_id=%d): %s",
+                            queue_id,
+                            exception,
+                        )
+                        return
+                    stripped = reply.strip().splitlines()
+                    if stripped and not stripped[0].lstrip("-").isdigit():
+                        preview = entry if len(entry) <= 240 else entry[:240] + "…"
+                        logger.error(
+                            "unexpected liquidsoap push reply for %s: %s "
+                            "(entry preview: %s)",
+                            cmd.split(" ", 1)[0],
+                            reply,
+                            preview,
+                        )
+                    try:
+                        self._set_var("show_name", self._quote(show_name))
+                    except Exception:
+                        logger.warning(
+                            "failed to set show_name after push (non-fatal, queue_id=%d)",
+                            queue_id,
+                        )
+                    return
+            except connection_errors:
+                if attempt == 2:
+                    raise
                 logger.warning(
-                    "failed to set show_name after push (non-fatal, queue_id=%d)",
+                    "retrying queue push after telnet reconnect (queue_id=%d, attempt=%d)",
                     queue_id,
+                    attempt + 2,
                 )
+                sleep(0.25)
 
     def web_stream_get_id(self) -> str:
         with self.conn:

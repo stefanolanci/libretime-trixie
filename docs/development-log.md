@@ -12,15 +12,15 @@ Update this file when you ship meaningful fork changes so downstream users can f
 
 This repository is the **libretime-trixie** distribution: LibreTime packaged and tested for **Debian 13 (Trixie)**. Upstream lineage: [LibreTime](https://github.com/libretime/libretime) (AGPL-3.0). This fork’s **release identity** is independent of upstream’s setuptools labels.
 
-**Semantic version (one triple):** **Major.Minor.Patch** (e.g. `0.1.13`). The same triple appears in **`VERSION`**, **`setup.py`**, and the **Git tag** before `-trixie`.
+**Semantic version (one triple):** **Major.Minor.Patch** (e.g. `0.1.14`). The same triple appears in **`VERSION`**, **`setup.py`**, and the **Git tag** before `-trixie`.
 
 | Layer | Format | Example |
 |--------|--------|---------|
-| **Git tag (this repo)** | `Major.Minor.Patch-trixie` (**no** leading `v` on the tag ref) | **`0.1.13-trixie`** |
-| **Root `VERSION`** | `Major.Minor.Patch` + space + `trixie` | **`0.1.13 trixie`** |
-| **Python `setup.py`** | `version="Major.Minor.Patch"` | **`0.1.13`** |
+| **Git tag (this repo)** | `Major.Minor.Patch-trixie` (**no** leading `v` on the tag ref) | **`0.1.14-trixie`** |
+| **Root `VERSION`** | `Major.Minor.Patch` + space + `trixie` | **`0.1.14 trixie`** |
+| **Python `setup.py`** | `version="Major.Minor.Patch"` | **`0.1.14`** |
 
-User-facing history for this fork is maintained **here** (no separate root changelog). [GitHub Releases](https://github.com/stefanolanci/libretime-trixie/releases) may use a readable title such as **v0.1.13-trixie** while the **tag ref** remains **`M.m.p-trixie`**. One triple ⇒ one annotated tag and one release per bump.
+User-facing history for this fork is maintained **here** (no separate root changelog). [GitHub Releases](https://github.com/stefanolanci/libretime-trixie/releases) may use a readable title such as **v0.1.14-trixie** while the **tag ref** remains **`M.m.p-trixie`**. One triple ⇒ one annotated tag and one release per bump.
 
 ### Release checklist
 
@@ -31,8 +31,8 @@ User-facing history for this fork is maintained **here** (no separate root chang
 ### Check out a known release
 
 ```bash
-git fetch origin tag 0.1.13-trixie
-git checkout 0.1.13-trixie   # detached HEAD; fine for installs
+git fetch origin tag 0.1.14-trixie
+git checkout 0.1.14-trixie   # detached HEAD; fine for installs
 # or stay on main after a release merge:
 git checkout main && git pull
 ```
@@ -40,6 +40,16 @@ git checkout main && git pull
 ---
 
 ## Changelog (newest first)
+
+### 2026-04-26 — **v0.1.14-trixie** (patch)
+
+- Bumped fork semver to **0.1.14** in **`VERSION`** and all component **`setup.py`** files.
+- **Playout bootstrap reliability:** Liquidsoap Telnet queue pushes now retry cleanly after transient connection failures during service startup, avoiding a silent first scheduled item when Liquidsoap is active but its command socket is still settling.
+- **Liquidsoap Telnet client:** shared command connections are serialized with a re-entrant lock, broken sockets close without cascading cleanup errors, and lost push replies are handled without duplicating queue requests.
+- **Restart behavior:** repeated `libretime.target` stop/start, restart, and full server reboot checks confirmed schedule activation, Icecast metadata, and audible output recover automatically after startup.
+- **Git tag ref:** **`0.1.14-trixie`**. Release titles may use **v0.1.14-trixie**.
+
+---
 
 ### 2026-04-26 — **v0.1.13-trixie** (patch)
 
@@ -215,4 +225,4 @@ Applies to **retries**, **upgrades**, and **partial first-install recovery**; a 
 
 ---
 
-*Last updated: 2026-04-24.*
+*Last updated: 2026-04-26.*
