@@ -18,7 +18,7 @@ def analyze_playability(filename: str, metadata: Dict[str, Any]):
     try:
         _liquidsoap(
             "-v",
-            *("-c", "output.dummy(audio_to_stereo(single(argv(1))))"),
+            *("-c", "output.dummy(stereo(single(argv(1))))"),
             "--",
             filename,
         )

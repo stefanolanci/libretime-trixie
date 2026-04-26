@@ -12,15 +12,15 @@ Update this file when you ship meaningful fork changes so downstream users can f
 
 This repository is the **libretime-trixie** distribution: LibreTime packaged and tested for **Debian 13 (Trixie)**. Upstream lineage: [LibreTime](https://github.com/libretime/libretime) (AGPL-3.0). This fork’s **release identity** is independent of upstream’s setuptools labels.
 
-**Semantic version (one triple):** **Major.Minor.Patch** (e.g. `0.1.11`). The same triple appears in **`VERSION`**, **`setup.py`**, and the **Git tag** before `-trixie`.
+**Semantic version (one triple):** **Major.Minor.Patch** (e.g. `0.1.12`). The same triple appears in **`VERSION`**, **`setup.py`**, and the **Git tag** before `-trixie`.
 
 | Layer | Format | Example |
 |--------|--------|---------|
-| **Git tag (this repo)** | `Major.Minor.Patch-trixie` (**no** leading `v` on the tag ref) | **`0.1.11-trixie`** |
-| **Root `VERSION`** | `Major.Minor.Patch` + space + `trixie` | **`0.1.11 trixie`** |
-| **Python `setup.py`** | `version="Major.Minor.Patch"` | **`0.1.11`** |
+| **Git tag (this repo)** | `Major.Minor.Patch-trixie` (**no** leading `v` on the tag ref) | **`0.1.12-trixie`** |
+| **Root `VERSION`** | `Major.Minor.Patch` + space + `trixie` | **`0.1.12 trixie`** |
+| **Python `setup.py`** | `version="Major.Minor.Patch"` | **`0.1.12`** |
 
-User-facing history for this fork is maintained **here** (no separate root changelog). [GitHub Releases](https://github.com/stefanolanci/libretime-trixie/releases) may use a readable title such as **v0.1.11-trixie** while the **tag ref** remains **`M.m.p-trixie`**. One triple ⇒ one annotated tag and one release per bump.
+User-facing history for this fork is maintained **here** (no separate root changelog). [GitHub Releases](https://github.com/stefanolanci/libretime-trixie/releases) may use a readable title such as **v0.1.12-trixie** while the **tag ref** remains **`M.m.p-trixie`**. One triple ⇒ one annotated tag and one release per bump.
 
 ### Release checklist
 
@@ -31,8 +31,8 @@ User-facing history for this fork is maintained **here** (no separate root chang
 ### Check out a known release
 
 ```bash
-git fetch origin tag 0.1.11-trixie
-git checkout 0.1.11-trixie   # detached HEAD; fine for installs
+git fetch origin tag 0.1.12-trixie
+git checkout 0.1.12-trixie   # detached HEAD; fine for installs
 # or stay on main after a release merge:
 git checkout main && git pull
 ```
@@ -40,6 +40,18 @@ git checkout main && git pull
 ---
 
 ## Changelog (newest first)
+
+### 2026-04-26 — **v0.1.12-trixie** (patch)
+
+- Bumped fork semver to **0.1.12** in **`VERSION`** and all component **`setup.py`** files.
+- **`playout/libretime_playout/liquidsoap/templates/outputs.liq.j2`:** each generated Icecast output now gets a small per-mount Liquidsoap buffer before encoding; the buffer accepts transient fallibility and is followed by `mksafe(...)` so the Icecast output remains stable.
+- **`installer/icecast/icecast.xml`:** listener startup burst is re-enabled with a conservative **`burst-size=32768`** default (about 2 seconds at 128 kbps), improving startup without returning to larger 64k reconnect bursts.
+- **`installer/config.yml`:** documents `audio.channels` explicitly for stream outputs.
+- **Scheduled web streams:** prebuffer events are keyed at the actual prebuffer time, and playout waits briefly for the HTTP source to report `connected` before switching it on air. The Liquidsoap route can let an already armed web stream take over when the aggregate scheduled queue runs dry just before the output-start event, avoiding a brief offline fallback. Removal keeps the stable route-disable/id-reset behavior because forcing `input.http.stop()` is not safe on the tested Liquidsoap 2.3 build.
+- **Scheduled item removal:** playout now fast-paths `remove_items` schedule updates so removing the currently playing item can cut to the next valid scheduled item without waiting for the full cache cleanup cycle.
+- **Git tag ref:** **`0.1.12-trixie`**. Release titles may use **v0.1.12-trixie**.
+
+---
 
 ### 2026-04-24 — **v0.1.11-trixie** (patch)
 

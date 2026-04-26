@@ -60,3 +60,25 @@ class Config(BaseConfig):
     playout: PlayoutConfig = PlayoutConfig()
     liquidsoap: LiquidsoapConfig = LiquidsoapConfig()
     stream: StreamConfig = StreamConfig()
+
+    @model_validator(mode="after")
+    def _validate_secure_harbor_inputs(self):
+        secure_inputs = [
+            name
+            for name, input_config in (
+                ("main", self.stream.inputs.main),
+                ("show", self.stream.inputs.show),
+            )
+            if input_config.secure
+        ]
+        if secure_inputs and (
+            not self.liquidsoap.harbor_ssl_certificate
+            or not self.liquidsoap.harbor_ssl_private_key
+        ):
+            names = ", ".join(secure_inputs)
+            raise ValueError(
+                "secure harbor input(s) require liquidsoap.harbor_ssl_certificate "
+                f"and liquidsoap.harbor_ssl_private_key: {names}"
+            )
+
+        return self

@@ -2,9 +2,10 @@ boot_timestamp = string(time())
 
 web_stream_enabled = ref(false)
 web_stream_id = ref("-1")
-# True from web_stream.set_id (prebuffer) until stop_web_stream. http_fallback still uses only
-# web_stream_enabled so the file is not cut early; switch:blank+schedule uses this to avoid
-# the outer default/offline dip between file EOF and start_web_stream.
+web_stream_http_connected = ref(false)
+# True from web_stream.set_id (prebuffer) until stop_web_stream. The aggregate
+# http_fallback can take over from the scheduled queue when the queued file has
+# ended slightly before the WEB_STREAM_OUTPUT_START event fires.
 web_stream_armed = ref(false)
 
 show_name = interactive.string("show_name", "")
@@ -19,7 +20,9 @@ sources = ref([])
 source_id = ref (0)
 
 # Dedicated web stream HTTP source controlled via telnet command "http.restart".
-http = input.http_restart(id="http", initial_url=http_idle_initial_path)
+http = input.http_restart(id="http",
+                          initial_url=http_idle_initial_path,
+                          connected_ref=web_stream_http_connected)
 ignore(output.dummy(fallible=true, http))
 
 def create_source()
@@ -40,8 +43,6 @@ def create_source()
 
     l = metadata.map(notify_queue, l)
     l = cross_http(http_input_id="http", l)
-    l = http_fallback(http_input_id="http", http=http, default=l)
-    l = metadata.map(id="map_metadata:schedule", update=false, append_title, l)
     sources := list.append([l], sources())
     server.register(namespace="queues",
                 "s#{this_source_id}_skip",
@@ -58,6 +59,8 @@ create_source()
 create_source()
 
 queue = add(normalize=false, sources())
+queue = http_fallback(http_input_id="http", http=http, default=queue)
+queue = metadata.map(id="map_metadata:schedule", update=false, append_title, queue)
 queue = insert_metadata(queue)
 dynamic_metadata_callback := queue.insert_metadata
 
@@ -168,6 +171,7 @@ s = if input_show_port != 0 and input_show_mount != "" then
         input.harbor(id="harbor:input_show",
             input_show_mount,
             port=input_show_port,
+            transport=input_show_transport,
             auth=make_input_auth_handler("show"),
             max=40.,
             on_connect=input_show_on_connect,
@@ -190,6 +194,7 @@ s = if input_main_port != 0 and input_main_mount != "" then
         input.harbor(id="harbor:input_main",
             input_main_mount,
             port=input_main_port,
+            transport=input_main_transport,
             auth=make_input_auth_handler("main"),
             max=40.,
             on_connect=input_main_on_connect,

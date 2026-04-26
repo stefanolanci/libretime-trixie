@@ -6,14 +6,25 @@
 # streams to Icecast/Shoutcast. After installation it usually lives at:
 #   /etc/libretime/config.yml
 #
-# Recommended audio format on this distribution: MP3
+# Recommended audio format on this distribution: MP3.
 #   • Best compatibility with players and Icecast directories.
 #   • AAC (format: aac) passes YAML validation but is NOT usable with the
-#     typical Debian/Trixie Liquidsoap package: the fdkaac encoder is missing
-#     (“unsupported format” at startup). Do not enable AAC unless you use a
-#     custom Liquidsoap build with libfdk-aac.
+#     default Debian/Trixie Liquidsoap package used by this fork: the FDK-AAC
+#     encoder is not compiled in (“unsupported format” at startup). Do not
+#     enable AAC unless you intentionally run a custom Liquidsoap build with
+#     libfdk-aac support.
 #   • Ogg (Vorbis) and Opus remain valid if you change `format` under `audio:`;
 #     for Ogg see the notes on `enable_metadata` below.
+#
+# Harbor TLS for live/DJ inputs:
+#   • The default Debian/Trixie Liquidsoap package does not expose the legacy
+#     `settings.harbor.ssl.*` settings. This fork only uses the LS 2.3 transport
+#     API when an input below has `secure: true`.
+#   • Leave `secure: false` and the `harbor_ssl_*` fields empty unless your
+#     Liquidsoap build provides SSL transport support and you have tested it.
+#   • Enabling `secure: true` without a matching certificate/private key, or on
+#     a build without SSL transport support, prevents the generated `radio.liq`
+#     from starting.
 #
 # Icecast streams: at most 3 entries in the `icecast` array. Defaults here:
 #   1) /main      – MP3 128 kbps, enabled
@@ -113,6 +124,13 @@ liquidsoap:
   server_listen_address: "127.0.0.1"
   server_listen_port: 1234
   harbor_listen_address: ["0.0.0.0"]
+
+  # Optional TLS material for live/DJ Harbor inputs.
+  #
+  # Debian/Trixie default: keep these empty and keep stream.inputs.*.secure=false.
+  # Custom Liquidsoap builds: set certificate/private key only if your build
+  # supports `http.transport.ssl(...)`; the generated script passes that
+  # transport directly to `input.harbor`.
   harbor_ssl_certificate:
   harbor_ssl_private_key:
   harbor_ssl_password:
@@ -122,6 +140,10 @@ liquidsoap:
 # -----------------------------------------------------------------------------
 stream:
   # Live encoder (DJ) inputs: two ports, mount and credentials in legacy UI.
+  # `secure: true` switches the matching Harbor input to HTTPS/TLS and requires
+  # liquidsoap.harbor_ssl_certificate + liquidsoap.harbor_ssl_private_key above.
+  # Do not enable it on the default Debian/Trixie Liquidsoap package unless you
+  # have verified SSL transport support in your installed binary.
   inputs:
     main:
       public_url:
@@ -158,8 +180,12 @@ stream:
     #   enabled   – true/false
     #   mount     – Icecast mount point (no leading slash in the listen URL)
     #   public_url – optional; if empty it is derived from general.public_url
-    #   audio.format – mp3 | ogg | opus | aac (aac not supported with Debian LS, see above)
+    #   audio.format – mp3 | ogg | opus | aac
+    #                  AAC requires a custom Liquidsoap build with libfdk-aac;
+    #                  the default Debian/Trixie package should use mp3/ogg/opus.
     #   audio.bitrate – one of: 32, 48, 64, 96, 128, 160, 192, 224, 256, 320
+    #   audio.channels – stereo | mono (default: stereo). Mono is downmixed
+    #                    before encoding and can reduce bandwidth/player load.
     #   audio.enable_metadata – only for format: ogg (recommended default false)
     # -------------------------------------------------------------------------
     icecast:
@@ -171,6 +197,7 @@ stream:
         audio:
           format: mp3
           bitrate: 128
+          channels: stereo
 
       # Second mount — lower bitrate (backup, mobile, bandwidth limits)
       - <<: *default_icecast_output
@@ -180,6 +207,7 @@ stream:
         audio:
           format: mp3
           bitrate: 96
+          channels: stereo
 
       # Third slot — disabled; same MP3 model for quick enablement
       - <<: *default_icecast_output
@@ -189,10 +217,13 @@ stream:
         audio:
           format: mp3
           bitrate: 128
+          channels: stereo
 
     # -------------------------------------------------------------------------
     # Shoutcast — only one output in the current model. Disabled here.
-    # Allowed format: mp3 | aac (same AAC limitations as above).
+    # Allowed format: mp3 | aac.
+    # AAC has the same custom-build requirement described above; use mp3 with
+    # the default Debian/Trixie Liquidsoap package.
     # -------------------------------------------------------------------------
     shoutcast:
       - enabled: false
@@ -206,6 +237,7 @@ stream:
         audio:
           format: mp3
           bitrate: 256
+          channels: stereo
         name: LibreTime!
         website: https://libretime.org
         genre: various

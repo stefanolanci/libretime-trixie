@@ -34,11 +34,11 @@ def insert_event(events: Events, event_key: str, event: AnyEvent) -> None:
     events[key] = event
 
 
-def get_schedule(api_client: ApiClient) -> Events:
+def get_schedule(api_client: ApiClient, lookahead: timedelta = timedelta(days=1)) -> Events:
     stream_preferences = StreamPreferences(**api_client.get_stream_preferences().json())
 
     current_time = datetime.now(timezone.utc).replace(tzinfo=None)
-    end_time = current_time + timedelta(days=1)
+    end_time = current_time + lookahead
 
     current_time_str = current_time.isoformat(timespec="seconds")
     end_time_str = end_time.isoformat(timespec="seconds")
@@ -200,7 +200,9 @@ def generate_webstream_events(
         # Show data
         show_name=show["name"],
     )
-    insert_event(events, schedule_start_event_key, stream_buffer_start_event)
+    insert_event(
+        events, stream_buffer_start_event.start_key, stream_buffer_start_event
+    )
 
     stream_output_start_event = WebStreamEvent(
         type=EventKind.WEB_STREAM_OUTPUT_START,

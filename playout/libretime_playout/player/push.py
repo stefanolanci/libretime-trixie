@@ -54,11 +54,23 @@ class PypoPush(Thread):
             logger.debug(events)
             # separate media_schedule list into currently_playing and
             # scheduled_for_future lists
+            schedule_received_at = time.monotonic()
             currently_playing, scheduled_for_future = self.separate_present_future(
                 events
             )
+            logger.info(
+                "PypoPush received schedule: present=%d future=%d split=%.3fs",
+                len(currently_playing),
+                len(scheduled_for_future),
+                time.monotonic() - schedule_received_at,
+            )
 
+            verify_started = time.monotonic()
             self.liquidsoap.verify_correct_present_media(currently_playing)
+            logger.info(
+                "verify_correct_present_media completed in %.3fs",
+                time.monotonic() - verify_started,
+            )
             if (
                 self._post_present_media_sync is not None
                 and not self._post_present_media_sync_done

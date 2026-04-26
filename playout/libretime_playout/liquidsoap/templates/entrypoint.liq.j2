@@ -2,13 +2,25 @@
 ###########################################################
 # The ignore() lines are to squash unused variable warnings
 
+{% macro harbor_transport(input) -%}
+{%- if input.secure -%}
+http.transport.ssl(
+  certificate={{ config.liquidsoap.harbor_ssl_certificate | quote }},
+  key={{ config.liquidsoap.harbor_ssl_private_key | quote }}{% if config.liquidsoap.harbor_ssl_password %},
+  password={{ config.liquidsoap.harbor_ssl_password | quote }}{% endif %}
+)
+{%- else -%}
+http.transport.unix
+{%- endif -%}
+{%- endmacro %}
+
 # Inputs
 input_main_mount = {{ config.stream.inputs.main.mount | quote }}
 input_main_port = {{ config.stream.inputs.main.port }}
-input_main_secure = {{ config.stream.inputs.main.secure | string | lower }}
+input_main_transport = {{ harbor_transport(config.stream.inputs.main) }}
 input_show_mount = {{ config.stream.inputs.show.mount | quote }}
 input_show_port = {{ config.stream.inputs.show.port }}
-input_show_secure = {{ config.stream.inputs.show.secure | string | lower }}
+input_show_transport = {{ harbor_transport(config.stream.inputs.show) }}
 
 # Settings (LS 2.3 syntax: `settings.path.to.key := value`)
 {% if paths.log_filepath is defined -%}
@@ -22,14 +34,6 @@ settings.server.telnet.bind_addr := {{ config.liquidsoap.server_listen_address |
 settings.server.telnet.port := {{ config.liquidsoap.server_listen_port }}
 
 settings.harbor.bind_addrs := ["{{ config.liquidsoap.harbor_listen_address | join('", "') }}"]
-
-{% if config.liquidsoap.harbor_ssl_certificate -%}
-settings.harbor.ssl.certificate := "{{ config.liquidsoap.harbor_ssl_certificate }}"
-settings.harbor.ssl.private_key := "{{ config.liquidsoap.harbor_ssl_private_key }}"
-{% if config.liquidsoap.harbor_ssl_password -%}
-settings.harbor.ssl.password := "{{ config.liquidsoap.harbor_ssl_password }}"
-{%- endif %}
-{% endif -%}
 
 station_name = interactive.string("station_name", {{ info.station_name | quote }})
 

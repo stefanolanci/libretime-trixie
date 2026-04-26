@@ -25,11 +25,13 @@
              it also significantly increases latency between the source
              client and listening client.  For low-latency setups, you
              might want to disable this. -->
-        <burst-on-connect>0</burst-on-connect>
+        <burst-on-connect>1</burst-on-connect>
         <!-- same as burst-on-connect, but this allows for being more
-             specific on how much to burst. Most people won't need to
-             change from the default 64k. Applies to all mountpoints  -->
-        <burst-size>0</burst-size>
+             specific on how much to burst. 32k is a conservative default
+             for 96-128 kbps radio streams: enough to shorten startup
+             buffering without sending the larger repeated slices that 64k
+             can produce during reconnect loops. Applies to all mountpoints. -->
+        <burst-size>32768</burst-size>
     </limits>
 
     <authentication>

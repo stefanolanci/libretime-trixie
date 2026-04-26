@@ -119,14 +119,32 @@ end
 # Icecast outputs and triggers "Broken pipe" on /main and /main-low, disconnecting
 # listener apps. The idempotent no-op preserves a stable stream for the listener while
 # still allowing real URL changes, first activation, and network-recovery restarts.
-def input.http_restart(~id, ~initial_url)
+def input.http_restart(~id, ~initial_url, ~connected_ref)
   startup_url =
     if string.contains(substring="anullsrc=", initial_url) then
       "http://127.0.0.1:9"
     else
       initial_url
     end
-  source = stereo(input.http(id=id, start=false, startup_url))
+  def on_connect(_headers)
+    connected_ref := true
+  end
+  def on_disconnect()
+    connected_ref := false
+  end
+  def on_stop()
+    connected_ref := false
+  end
+  def on_error(_error)
+    connected_ref := false
+  end
+  source = stereo(input.http(id=id,
+                             start=false,
+                             on_connect=on_connect,
+                             on_disconnect=on_disconnect,
+                             on_stop=on_stop,
+                             on_error=on_error,
+                             startup_url))
 
   # Last URL actually armed via the "restart" telnet command. Used to detect redundant
   # calls from playout (same URL while already streaming) and skip the stop/start cycle.
@@ -195,7 +213,7 @@ def cross_http(~debug=true, ~http_input_id, source)
       else url_raw end
     status =
       if source.is_ready() then "streaming" else "stopped" end
-    on_m([("source_url", url)])
+    ignore(on_m([("source_url", url)]))
     if debug then
       log("New track inside HTTP stream")
       log("  status: #{status}")
@@ -230,15 +248,29 @@ def http_fallback(~http_input_id, ~http, ~default)
   end
 
   def connected()
-    # No "#{id}.status" on input.ffmpeg; readiness matches previous intent closely.
-    http.is_ready()
+    # input.http may report is_ready() late around track boundaries even after
+    # FFmpeg has connected. The native lifecycle callbacks track connection state
+    # early enough for an armed webstream to take over when the schedule runs dry.
+    web_stream_http_connected()
   end
   # Longer hold than the default 3s: after Icecast broken-pipe reconnect, http.is_ready
   # can flap false briefly and triggers to_static → to_live (audible + PLC chaos).
   connected = gracetime(delay=10., connected)
 
+  def web_stream_should_play()
+    connected() and (
+      web_stream_enabled() or
+      (web_stream_armed() and not default.is_ready())
+    )
+  end
+
   def to_live(a, b) =
     log("TRANSITION to live")
+    if web_stream_armed() and not web_stream_enabled() and web_stream_id() != "-1" then
+      log("web stream armed takeover")
+      notify([("schedule_table_id", web_stream_id())]) ;
+      web_stream_enabled := true
+    end ;
     add(normalize=false,
       [fade.in(b), fade.out(a)])
   end
@@ -250,9 +282,10 @@ def http_fallback(~http_input_id, ~http, ~default)
   switch(
     track_sensitive=false,
     transitions=[to_live, to_static],
-    # connected() wraps http.is_ready in gracetime; extra is_ready() made
-    # cross_http briefly select default (offline/silence) until LS restart.
-    [({connected() and web_stream_enabled()}, http),
+    # `default` is the aggregate scheduled queue. If it runs dry slightly before
+    # WEB_STREAM_OUTPUT_START, an already armed and connected webstream may take over
+    # instead of briefly selecting the offline source.
+    [({web_stream_should_play()}, http),
      ({true}, default)])
 
 end

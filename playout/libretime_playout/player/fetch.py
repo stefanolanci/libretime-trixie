@@ -2,6 +2,7 @@ import copy
 import logging
 import os
 import time
+from datetime import timedelta
 from pathlib import Path
 from queue import Empty, Queue
 from subprocess import DEVNULL, PIPE, run
@@ -113,10 +114,37 @@ class PypoFetch(Thread):
             logger.debug("handling event %s: %s", command, message)
 
             if command == "update_schedule":
+                action = message.get("action")
+                if action == "remove_items":
+                    fast_started = time.monotonic()
+                    fast_schedule = get_schedule(
+                        self.api_client,
+                        lookahead=timedelta(hours=1),
+                    )
+                    logger.info(
+                        "remove_items fast schedule fetched in %.3fs (%d events)",
+                        time.monotonic() - fast_started,
+                        len(fast_schedule),
+                    )
+                    self.process_schedule(
+                        fast_schedule,
+                        schedule_action=action,
+                        fast_path=True,
+                        cleanup_cache=False,
+                        sync_streams=False,
+                    )
+
+                full_started = time.monotonic()
                 self.schedule_data = get_schedule(self.api_client)
+                logger.info(
+                    "update_schedule full schedule fetched in %.3fs (%d events, action=%s)",
+                    time.monotonic() - full_started,
+                    len(self.schedule_data),
+                    action,
+                )
                 if self._plm is not None:
                     self._plm.has_schedule = bool(self.schedule_data)
-                self.process_schedule(self.schedule_data)
+                self.process_schedule(self.schedule_data, schedule_action=action)
             elif command == "reset_liquidsoap_bootstrap":
                 self.set_bootstrap_variables()
             elif command == "update_stream_format":
@@ -256,7 +284,16 @@ class PypoFetch(Thread):
     #    (Folder-structure: cache/YYYY-MM-DD-hh-mm-ss)
     #  - runs the cleanup routine, to get rid of unused cached files
 
-    def process_schedule(self, events: Events) -> None:
+    def process_schedule(
+        self,
+        events: Events,
+        *,
+        schedule_action: Optional[str] = None,
+        fast_path: bool = False,
+        cleanup_cache: bool = True,
+        sync_streams: bool = True,
+    ) -> None:
+        started = time.monotonic()
         self.last_update_schedule_timestamp = time.time()
         logger.debug(events)
         file_events: FileEvents = {}
@@ -277,16 +314,36 @@ class PypoFetch(Thread):
         # Send the data to pypo-push
         logger.debug("Pushing to pypo-push")
         self.push_queue.put(all_events)
+        logger.info(
+            "process_schedule enqueued %d events (%d files) in %.3fs "
+            "(action=%s fast_path=%s cleanup=%s)",
+            len(all_events),
+            len(file_events),
+            time.monotonic() - started,
+            schedule_action,
+            fast_path,
+            cleanup_cache,
+        )
 
         # cleanup
-        try:
-            self.cache_cleanup(events)
-        except Exception as exception:  # pylint: disable=broad-exception-caught
-            logger.exception(exception)
+        if cleanup_cache:
+            cleanup_started = time.monotonic()
+            try:
+                self.cache_cleanup(events)
+            except Exception as exception:  # pylint: disable=broad-exception-caught
+                logger.exception(exception)
+            else:
+                logger.info(
+                    "cache cleanup completed in %.3fs (action=%s fast_path=%s)",
+                    time.monotonic() - cleanup_started,
+                    schedule_action,
+                    fast_path,
+                )
 
         # Keep Liquidsoap harbor/schedule refs aligned with API (fixes missed RabbitMQ
         # messages, stale prefs, or UI/API drift while automation keeps pushing tracks).
-        self._sync_stream_switches_from_api()
+        if sync_streams:
+            self._sync_stream_switches_from_api()
 
     def _sync_stream_switches_from_api(self) -> None:
         try:

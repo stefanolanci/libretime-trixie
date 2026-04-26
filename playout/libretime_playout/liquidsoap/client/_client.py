@@ -1,12 +1,12 @@
 import logging
 from pathlib import Path
-from time import sleep
+from time import monotonic, sleep
 from typing import Any, Literal, Optional, Tuple, Union
 
 from ..models import MessageFormatKind
 from ..utils import quote
 from ..version import parse_liquidsoap_version
-from ._connection import LiquidsoapConnection
+from ._connection import InvalidConnection, LiquidsoapConnection
 
 logger = logging.getLogger(__name__)
 
@@ -134,11 +134,51 @@ class LiquidsoapClient:
             return self.conn.read().splitlines()[0]
 
     def web_stream_start(self) -> None:
-        with self.conn:
-            self.conn.write("sources.start_schedule")
-            self.conn.read()  # Flush
-            self.conn.write("sources.start_web_stream")
-            self.conn.read()  # Flush
+        def read_http_status() -> str:
+            with self.conn:
+                self.conn.write("http.status")
+                return self.conn.read()
+
+        def start_web_stream() -> None:
+            with self.conn:
+                self.conn.write("sources.start_schedule")
+                self.conn.read()  # Flush
+                self.conn.write("sources.start_web_stream")
+                self.conn.read()  # Flush
+
+        status = "unknown"
+        connection_errors = (InvalidConnection, OSError, ConnectionError)
+        # Do not keep one telnet session open while sleeping: this client instance is
+        # shared by playout paths, and a long-lived session can be closed by another
+        # call before the delayed http.status poll writes again.
+        deadline = monotonic() + 5.0
+        while True:
+            try:
+                status = read_http_status()
+            except connection_errors as exception:
+                status = f"unavailable: {exception}"
+                logger.warning(
+                    "could not read HTTP status before starting web stream: %s",
+                    exception,
+                )
+            if "connected" in status:
+                break
+            if monotonic() >= deadline:
+                logger.warning(
+                    "Starting web stream before HTTP source is ready: %s", status
+                )
+                break
+            sleep(0.25)
+
+        for attempt in range(2):
+            try:
+                start_web_stream()
+                return
+            except connection_errors:
+                if attempt == 1:
+                    raise
+                logger.warning("retrying web stream start after telnet reconnect")
+                sleep(0.25)
 
     def web_stream_start_buffer(self, schedule_id: int, uri: str) -> None:
         with self.conn:
@@ -154,8 +194,6 @@ class LiquidsoapClient:
 
     def web_stream_stop_buffer(self) -> None:
         with self.conn:
-            # LS 2.3 does not expose "http.stop" for input.ffmpeg-backed HTTP source.
-            # Disable web stream routing through the supported source namespace.
             self.conn.write("sources.stop_web_stream")
             self.conn.read()  # Flush
             self.conn.write("web_stream.set_id -1")

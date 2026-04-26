@@ -62,6 +62,8 @@ output_icecast_{{ output_id }}_source = add(normalize=false, [amplify(0.00001, n
 {% if not (output.audio.format == "ogg" and not output.audio.enable_metadata) -%}
 output_icecast_{{ output_id }}_source = add(normalize=false, [output_icecast_{{ output_id }}_source, amplify(0.00001, noise())])
 {% endif -%}
+output_icecast_{{ output_id }}_source = buffer(id="icecast_{{ output_id }}_buffer", buffer=2.0, max=5.0, fallible=true, register_telnet=false, output_icecast_{{ output_id }}_source)
+output_icecast_{{ output_id }}_source = mksafe(output_icecast_{{ output_id }}_source)
 
 output.icecast(
   id="icecast:{{ output_id }}",
