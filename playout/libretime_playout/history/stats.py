@@ -97,6 +97,7 @@ class StatsCollector:
         stats: List[Dict[str, Any]] = []
         stats_timestamp = _timestamp.strftime("%Y-%m-%d %H:%M:%S")
         cache: Dict[str, Dict[str, Stats]] = {}
+        status_updates: Dict[int, str] = {}
 
         for output_id, output in enumerate(outputs, start=1):
             if (
@@ -117,10 +118,10 @@ class StatsCollector:
                     requests.exceptions.Timeout,
                 ) as exception:
                     logger.exception(exception)
-                    self._legacy_client.update_stream_setting_table(
-                        {output_id: str(exception)}
-                    )
+                    status_updates[output_id] = str(exception)
                     continue
+
+            status_updates[output_id] = "OK"
 
             output_stats = cache[output_url]
 
@@ -137,6 +138,9 @@ class StatsCollector:
 
         if stats:
             self._legacy_client.push_stream_stats(stats)
+
+        if status_updates:
+            self._legacy_client.update_stream_setting_table(status_updates)
 
 
 class StatsCollectorThread(Thread):

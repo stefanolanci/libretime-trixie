@@ -1620,6 +1620,131 @@ class Application_Model_Preference
         self::setValue('station_podcast_privacy', $value);
     }
 
+    public const PODCAST_APPLE_MAX_ARTWORK_BYTES = 6291456;
+
+    public static function getPodcastAppleOwnerName()
+    {
+        return (string) self::getValue('podcast_apple_owner_name');
+    }
+
+    public static function setPodcastAppleOwnerName($name)
+    {
+        self::setValue('podcast_apple_owner_name', $name === null ? '' : (string) $name);
+    }
+
+    public static function getPodcastAppleOwnerEmail()
+    {
+        return (string) self::getValue('podcast_apple_owner_email');
+    }
+
+    public static function setPodcastAppleOwnerEmail($email)
+    {
+        self::setValue('podcast_apple_owner_email', $email === null ? '' : (string) $email);
+    }
+
+    public static function getPodcastAppleShowType()
+    {
+        $v = self::getValue('podcast_apple_show_type');
+        if ($v === 'serial' || $v === 'episodic') {
+            return $v;
+        }
+
+        return 'episodic';
+    }
+
+    public static function setPodcastAppleShowType($value)
+    {
+        $v = in_array($value, ['serial', 'episodic'], true) ? $value : 'episodic';
+        self::setValue('podcast_apple_show_type', $v);
+    }
+
+    public static function getPodcastAppleCategoryPrimary()
+    {
+        return (string) self::getValue('podcast_apple_category_primary');
+    }
+
+    public static function setPodcastAppleCategoryPrimary($value)
+    {
+        self::setValue('podcast_apple_category_primary', $value === null ? '' : (string) $value);
+    }
+
+    public static function getPodcastAppleCategorySubcategory()
+    {
+        return (string) self::getValue('podcast_apple_category_subcategory');
+    }
+
+    public static function setPodcastAppleCategorySubcategory($value)
+    {
+        self::setValue('podcast_apple_category_subcategory', $value === null ? '' : (string) $value);
+    }
+
+    public static function getPodcastAppleArtworkBase64()
+    {
+        $b = self::getValue('podcast_apple_artwork_base64');
+        if (empty($b) || !is_string($b)) {
+            return '';
+        }
+
+        return $b;
+    }
+
+    public static function getPodcastAppleArtworkMime()
+    {
+        $m = self::getValue('podcast_apple_artwork_mime');
+
+        return is_string($m) && $m !== '' ? $m : '';
+    }
+
+    /**
+     * @return string raw image bytes or empty string if none stored
+     */
+    public static function getPodcastAppleArtworkDecoded()
+    {
+        $b64 = self::getPodcastAppleArtworkBase64();
+        if ($b64 === '') {
+            return '';
+        }
+        $raw = base64_decode($b64, true);
+
+        return $raw !== false && $raw !== '' ? $raw : '';
+    }
+
+    public static function setPodcastAppleArtworkFromFile($imagePath)
+    {
+        if ($imagePath === '' || $imagePath === null) {
+            self::clearPodcastAppleArtwork();
+            return;
+        }
+        $raw = @file_get_contents($imagePath);
+        if ($raw === false || $raw === '') {
+            Logging::warn('Could not read podcast Apple artwork file: ' . (string) $imagePath);
+
+            return;
+        }
+        if (strlen($raw) > self::PODCAST_APPLE_MAX_ARTWORK_BYTES) {
+            Logging::warn('Podcast Apple artwork exceeds size limit');
+
+            return;
+        }
+        $f = finfo_open();
+        $mime = finfo_buffer($f, $raw, FILEINFO_MIME_TYPE);
+        finfo_close($f);
+        if (!in_array($mime, ['image/jpeg', 'image/png'], true)) {
+            Logging::warn('Podcast Apple artwork MIME not allowed: ' . $mime);
+
+            return;
+        }
+
+        self::setValue('podcast_apple_artwork_base64', base64_encode($raw));
+        self::setValue('podcast_apple_artwork_mime', $mime);
+    }
+
+    public static function clearPodcastAppleArtwork()
+    {
+        self::setValue('podcast_apple_artwork_base64', '');
+        self::setValue('podcast_apple_artwork_mime', '');
+    }
+
     /**
      * Getter for feature preview mode.
      *

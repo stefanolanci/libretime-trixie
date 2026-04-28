@@ -1,5 +1,7 @@
 <?php
 
+require_once APPLICATION_PATH . '/common/ApplePodcastsCategories.php';
+
 class Rest_PodcastController extends Zend_Rest_Controller
 {
     public function init()
@@ -213,9 +215,13 @@ class Rest_PodcastController extends Zend_Rest_Controller
         $stationPodcastId = Application_Model_Preference::getStationPodcastId();
         $podcast = Application_Service_PodcastService::getPodcastById($stationPodcastId);
         $path = 'podcast/station.phtml';
-        $this->view->podcast = $podcast;
+        $this->view->podcast = json_encode($podcast);
+        $this->view->applePodcastCategoriesJson = json_encode(
+            Application_Common_ApplePodcastsCategories::getHierarchy(),
+            JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
+        );
         $this->_helper->json->sendJson([
-            'podcast' => json_encode($podcast),
+            'podcast' => $this->view->podcast,
             'html' => $this->view->render($path),
         ]);
     }

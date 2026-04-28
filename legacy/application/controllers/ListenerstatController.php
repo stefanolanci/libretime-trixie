@@ -38,14 +38,46 @@ class ListenerstatController extends Zend_Controller_Action
             'his_time_end' => $endsDT->format('H:i'),
         ]);
 
-        $errorStatus = Application_Model_Preference::GetAllListenerStatErrors();
-        $out = [];
-        foreach ($errorStatus as $v) {
-            $key = explode(':', $v['keystr']);
-            if ($v['valstr'] != 'OK') {
-                $v['valstr'] = _('Please make sure admin user/password is correct on Settings->Streams page.');
+        $storedStatuses = [];
+        foreach (Application_Model_Preference::GetAllListenerStatErrors() as $row) {
+            $key = explode(':', $row['keystr']);
+            if (!isset($key[1])) {
+                continue;
             }
-            $out['stream ' . $key[1]] = $v['valstr'];
+
+            $storedStatuses[(int) $key[1]] = $row['valstr'];
+        }
+
+        $enabledStreams = array_flip(array_map(
+            static fn ($streamId) => (int) trim($streamId, 's'),
+            Application_Model_StreamSetting::getEnabledStreamIds()
+        ));
+        $out = [];
+        for ($streamId = 1; $streamId <= MAX_NUM_STREAMS; ++$streamId) {
+            if (!isset($enabledStreams[$streamId])) {
+                $out['stream ' . $streamId] = [
+                    'message' => _('Disabled'),
+                    'class' => 'status-disabled',
+                ];
+                continue;
+            }
+
+            $status = $storedStatuses[$streamId] ?? 'OK';
+            if ($status === 'OK') {
+                $out['stream ' . $streamId] = [
+                    'message' => 'OK',
+                    'class' => 'status-good',
+                ];
+                continue;
+            }
+
+            $isAuthenticationError = preg_match('/\b(401|403)\b|Authentication Required|Unauthorized|Forbidden/i', $status);
+            $out['stream ' . $streamId] = [
+                'message' => $isAuthenticationError
+                    ? _('Please make sure admin user/password is correct on Settings->Streams page.')
+                    : $status,
+                'class' => 'status-error',
+            ];
         }
 
         $this->view->errorStatus = $out;

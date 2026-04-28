@@ -17,6 +17,31 @@
                 <?php echo $this->form->getElement('csrf') ?>
                 <input ng-value="podcast.id" class="obj_id" type="hidden" />
 
+                <div class="apple-readiness-panel" ng-show="podcast.apple_readiness">
+                    <h3><?php echo _("Apple readiness (informational)") ?></h3>
+                    <div class="apple-readiness-block" ng-show="podcast.apple_readiness.errors.length">
+                        <strong><?php echo _("Issues") ?></strong>
+                        <ul>
+                            <li ng-repeat="e in podcast.apple_readiness.errors">{{e}}</li>
+                        </ul>
+                    </div>
+                    <div class="apple-readiness-block" ng-show="podcast.apple_readiness.warnings.length">
+                        <strong><?php echo _("Warnings") ?></strong>
+                        <ul>
+                            <li ng-repeat="w in podcast.apple_readiness.warnings">{{w}}</li>
+                        </ul>
+                    </div>
+                    <div class="apple-readiness-ok"
+                        ng-show="!podcast.apple_readiness.errors.length && !podcast.apple_readiness.warnings.length">
+                        <?php echo _("No notable issues surfaced in automatic checks.") ?>
+                    </div>
+                    <p class="apple-readiness-more">
+                        <?php echo (sprintf(_('See Apple’s podcast requirements and validate the live feed URL after publishing. %sOpen documentation%s'),
+                            '<a target="_blank" rel="noopener" href="https://podcasters.apple.com/support/823-podcast-requirements">',
+                            '</a>')); ?>
+                    </p>
+                </div>
+
                 <h3 class="collapsible-header"><span class="arrow-icon"></span><?php echo _("General Fields") ?></h3>
                 <div class="collapsible-content">
                     <fieldset class="padded">
@@ -55,37 +80,89 @@
                     </fieldset>
                 </div>
 
-                <h3 class="collapsible-header"><span class="arrow-icon"></span><?php echo _("iTunes Fields") ?></h3>
+                <h3 class="collapsible-header"><span class="arrow-icon"></span><?php echo _("Apple Podcasts fields") ?></h3>
                 <div class="collapsible-content">
                     <fieldset class="padded">
+                        <p class="apple-field-hint">
+                            <?php echo _("RSS channel tags consumed by Apple Podcasts and compatible apps.") ?>
+                        </p>
                         <div class="podcast-metadata-row">
                             <label><?php echo _("Author") ?></label>
-                            <input name="podcast_itunes_author" ng-model="podcast.itunes_author" type="text" />
+                            <input type="text" ng-model="podcast.itunes_author" />
                         </div>
-
-                        <div class="podcast-metadata-row">
-                            <label><?php echo _("Keywords") ?></label>
-                            <input name="podcast_itunes_keywords" ng-model="podcast.itunes_keywords" type="text" />
-                        </div>
-
                         <div class="podcast-metadata-row">
                             <label><?php echo _("Summary") ?></label>
-                            <textarea name="podcast_itunes_summary" ng-model="podcast.itunes_summary"></textarea>
+                            <textarea ng-model="podcast.itunes_summary"></textarea>
+                        </div>
+                        <div class="podcast-metadata-row podcast-explicit">
+                            <label><?php echo _("Explicit") ?></label>
+                            <label class="chk"><input ng-model="podcast.itunes_explicit" type="checkbox" />
+                                <?php echo _("Episode contains explicit content") ?></label>
+                        </div>
+                        <div class="podcast-metadata-row">
+                            <label><?php echo _("Apple category") ?></label>
+                            <select ng-model="podcast.apple_category_primary"
+                                ng-options="p as p for p in applePrimaryList">
+                                <option value=""><?php echo _("Select category"); ?></option>
+                            </select>
+                        </div>
+                        <div class="podcast-metadata-row">
+                            <label><?php echo _("Apple subcategory") ?></label>
+                            <select ng-model="podcast.apple_category_subcategory"
+                                ng-disabled="subcategorySelectDisabled()"
+                                ng-options="s as subcategoryLabel(s) for s in appleSubList track by s"></select>
                         </div>
 
+                        <div class="podcast-metadata-row">
+                            <label for="podcast_apple_owner_name"><?php echo _("Owner name") ?></label>
+                            <input id="podcast_apple_owner_name" type="text" ng-model="podcast.podcast_apple_owner_name" />
+                            <span class="field-hint"><?php echo _('Defaults to your station name if empty.') ?></span>
+                        </div>
+                        <div class="podcast-metadata-row">
+                            <label for="podcast_apple_owner_email"><?php echo _("Owner email") ?></label>
+                            <input id="podcast_apple_owner_email" type="email" ng-model="podcast.podcast_apple_owner_email" />
+                            <span class="field-hint"><?php echo _('Defaults to station contact email if empty.') ?></span>
+                        </div>
+                        <div class="podcast-metadata-row">
+                            <label><?php echo _("Podcast type") ?></label>
+                            <select ng-model="podcast.podcast_apple_show_type">
+                                <option value="episodic"><?php echo _("Episodic") ?></option>
+                                <option value="serial"><?php echo _("Serial") ?></option>
+                            </select>
+                        </div>
+
+                        <div class="podcast-metadata-row artwork-row">
+                            <label><?php echo _("Podcast artwork") ?></label>
+                            <div class="artwork-upload">
+                                <p class="apple-art-guidance">
+                                    <?php echo _("Square JPG or PNG (RGB/sRGB recommended), typically 1400–3000 px per side.") ?>
+                                    <span class="muted"><?php echo _("Hosted at"); ?> <code>{{ podcast.artwork_public_url }}</code></span>
+                                </p>
+                                <div class="img-preview-row" ng-show="podcast.artwork_public_url">
+                                    <img ng-src="{{ podcast.artwork_public_url }}?_={{ artworkCacheBuster }}" alt="" class="podcast-artwork-preview"
+                                        ng-class="{ 'fallback-artwork': !podcast.has_dedicated_podcast_artwork }" />
+                                </div>
+                                <input id="podcast-apple-artwork-input" accept="image/jpeg,image/png" type="file" />
+                                <button type="button" class="btn" id="podcast-apple-artwork-remove">
+                                    <?php echo _("Remove uploaded artwork"); ?>
+                                </button>
+                                <span class="muted" ng-show="!podcast.has_dedicated_podcast_artwork">
+                                    <?php echo _("Using station logo fallback until dedicated artwork is set.") ?></span>
+                            </div>
+                        </div>
+                    </fieldset>
+                </div>
+
+                <h3 class="collapsible-header closed"><span class="arrow-icon"></span><?php echo _("Legacy / optional") ?></h3>
+                <div class="collapsible-content" style="display: none;">
+                    <fieldset class="padded legacy-podcast-fields">
+                        <div class="podcast-metadata-row">
+                            <label><?php echo _("Keywords") ?></label>
+                            <input ng-model="podcast.itunes_keywords" type="text" />
+                        </div>
                         <div class="podcast-metadata-row">
                             <label><?php echo _("Subtitle") ?></label>
-                            <textarea name="podcast_itunes_subtitle" ng-model="podcast.itunes_subtitle"></textarea>
-                        </div>
-
-                        <div class="podcast-metadata-row">
-                            <label><?php echo _("Category") ?></label>
-                            <input name="podcast_itunes_category" ng-model="podcast.itunes_category" type="text" />
-                        </div>
-
-                        <div class="podcast-metadata-row">
-                            <label><?php echo _("Explicit") ?></label>
-                            <input name="podcast_itunes_explicit" ng-model="podcast.itunes_explicit" type="checkbox" />
+                            <textarea ng-model="podcast.itunes_subtitle"></textarea>
                         </div>
                     </fieldset>
                 </div>
@@ -115,12 +192,11 @@
 
                 <p id="station_podcast_help_text">
                     <?php echo (sprintf(
-                        _("For detailed information on what these metadata fields mean, please see the %sRSS specification%s
-                    or %sApple's podcasting documentation%s."),
-                        '<a href="http://cyber.law.harvard.edu/rss/rss.html#requiredChannelElements">',
+                        _('For detailed information on RSS and episode tags, please see the %sRSS specification%s and %sApple podcasting guides%s.'),
+                        '<a href="https://cyber.law.harvard.edu/rss/rss.html#requiredChannelElements">',
                         '</a>',
-                        '<a target="_blank" href="http://www.apple.com/ca/itunes/podcasts/specs.html">',
-                        "</a>"
+                        '<a target="_blank" rel="noopener" href="https://podcasters.apple.com/support/829-get-started-with-podcasts-connect">',
+                        '</a>'
                     )); ?>
                 </p>
             </form>
@@ -140,7 +216,9 @@
 </div>
 <script>
     $(document).ready(function() {
-        <?php echo "var podcast = " . $this->podcast . ";" ?>
+        <?php echo "var podcast = " . $this->podcast . ";\n"; ?>
+        var applePodcastCats = <?php echo $this->applePodcastCategoriesJson; ?>;
+        AIRTIME.podcast.podcastApp.value('applePodcastCategories', applePodcastCats);
         AIRTIME.podcast.podcastApp.value('podcast', podcast);
         AIRTIME.podcast.podcastApp.value('tab', null);
         var wrapper = $(".angular_wrapper");

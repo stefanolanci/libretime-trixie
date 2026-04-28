@@ -1,5 +1,7 @@
 <?php
 
+require_once APPLICATION_PATH . '/common/ApplePodcastsCategories.php';
+
 class PodcastController extends Zend_Controller_Action
 {
     public function init()
@@ -28,6 +30,10 @@ class PodcastController extends Zend_Controller_Action
         $stationPodcastId = Application_Model_Preference::getStationPodcastId();
         $podcast = Application_Service_PodcastService::getPodcastById($stationPodcastId);
         $this->view->podcast = json_encode($podcast);
+        $this->view->applePodcastCategoriesJson = json_encode(
+            Application_Common_ApplePodcastsCategories::getHierarchy(),
+            JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
+        );
         $this->view->form = new Application_Form_StationPodcast();
     }
 }

@@ -14,6 +14,18 @@ class Application_Service_PodcastService
         'owner',
     ];
 
+    /** @var string[] Fields kept in cc_prefs or computed for the UI; never written to Podcast via Propel */
+    private static $stationPodcastUiOnlyFields = [
+        'apple_readiness',
+        'artwork_public_url',
+        'has_dedicated_podcast_artwork',
+        'apple_category_primary',
+        'apple_category_subcategory',
+        'podcast_apple_show_type',
+        'podcast_apple_owner_name',
+        'podcast_apple_owner_email',
+    ];
+
     /**
      * Returns parsed rss feed, or false if the given URL cannot be downloaded.
      *
@@ -289,7 +301,100 @@ class Application_Service_PodcastService
         $podcast = $podcast->toArray(BasePeer::TYPE_FIELDNAME);
         $podcast['itunes_explicit'] = ($podcast['itunes_explicit'] == 'yes') ? true : false;
 
+        if ((string) $podcastId === (string) Application_Model_Preference::getStationPodcastId()) {
+            self::attachStationPodcastEditorFields($podcast);
+        }
+
         return $podcast;
+    }
+
+    /**
+     * Merges station-only Apple/editor fields for the legacy UI and REST payloads.
+     *
+     * @param array &$podcast fieldname keyed podcast row array
+     */
+    private static function attachStationPodcastEditorFields(&$podcast)
+    {
+        $primPref = trim(Application_Model_Preference::getPodcastAppleCategoryPrimary());
+        $subPref = trim(Application_Model_Preference::getPodcastAppleCategorySubcategory());
+        if ($primPref !== '' || $subPref !== '') {
+            $podcast['apple_category_primary'] = $primPref;
+            $podcast['apple_category_subcategory'] = $subPref;
+        } else {
+            $raw = trim($podcast['itunes_category'] ?? '');
+            if ($raw !== '') {
+                if (strpos($raw, '|') !== false) {
+                    $parts = array_pad(explode('|', $raw, 2), 2, '');
+                    $podcast['apple_category_primary'] = trim($parts[0]);
+                    $podcast['apple_category_subcategory'] = trim((string) $parts[1]);
+                } else {
+                    $comma = explode(',', $raw);
+                    $podcast['apple_category_primary'] = trim($comma[0]);
+                    $podcast['apple_category_subcategory'] = '';
+                }
+            } else {
+                $podcast['apple_category_primary'] = '';
+                $podcast['apple_category_subcategory'] = '';
+            }
+        }
+
+        $podcast['podcast_apple_owner_name'] = Application_Model_Preference::getPodcastAppleOwnerName();
+        $podcast['podcast_apple_owner_email'] = Application_Model_Preference::getPodcastAppleOwnerEmail();
+        $podcast['podcast_apple_show_type'] = Application_Model_Preference::getPodcastAppleShowType();
+
+        $podcast['has_dedicated_podcast_artwork'] = Application_Model_Preference::getPodcastAppleArtworkDecoded() !== '';
+        $podcast['artwork_public_url'] = rtrim(Config::getPublicUrl(), '/') . '/api/station-podcast-artwork';
+
+        $diag = Application_Service_PodcastFeedValidationService::getStationReadiness();
+        $podcast['apple_readiness'] = [
+            'errors' => $diag['errors'],
+            'warnings' => $diag['warnings'],
+        ];
+    }
+
+    /**
+     * Subset of station podcast fields returned after artwork POST/remove.
+     *
+     * @return array{apple_readiness: array, has_dedicated_podcast_artwork: bool, artwork_public_url: string}
+     */
+    public static function getPartialStationPodcastAppleUiPayload()
+    {
+        $stationPodcastId = (int) Application_Model_Preference::getStationPodcastId();
+        $full = self::getPodcastById($stationPodcastId);
+
+        return [
+            'apple_readiness' => $full['apple_readiness'],
+            'has_dedicated_podcast_artwork' => $full['has_dedicated_podcast_artwork'],
+            'artwork_public_url' => $full['artwork_public_url'],
+        ];
+    }
+
+    /**
+     * @param array $podcastData reference to PUT body podcast object
+     */
+    private static function persistStationAppleFieldsAndStrip(array &$podcastData)
+    {
+        $pairs = [
+            ['apple_category_primary', 'setPodcastAppleCategoryPrimary'],
+            ['apple_category_subcategory', 'setPodcastAppleCategorySubcategory'],
+            ['podcast_apple_show_type', 'setPodcastAppleShowType'],
+            ['podcast_apple_owner_name', 'setPodcastAppleOwnerName'],
+            ['podcast_apple_owner_email', 'setPodcastAppleOwnerEmail'],
+        ];
+        foreach ($pairs as $pair) {
+            [$key, $setter] = $pair;
+            if (array_key_exists($key, $podcastData)) {
+                call_user_func(['Application_Model_Preference', $setter], $podcastData[$key]);
+            }
+        }
+
+        $prim = trim(Application_Model_Preference::getPodcastAppleCategoryPrimary());
+        $sub = trim(Application_Model_Preference::getPodcastAppleCategorySubcategory());
+        $podcastData['itunes_category'] = $prim . ($sub !== '' ? '|' . $sub : '');
+
+        foreach (self::$stationPodcastUiOnlyFields as $k) {
+            unset($podcastData[$k]);
+        }
     }
 
     /**
@@ -358,6 +463,9 @@ class Application_Service_PodcastService
         }
 
         self::removePrivateFields($data['podcast']);
+        if ((string) $podcastId === (string) Application_Model_Preference::getStationPodcastId()) {
+            self::persistStationAppleFieldsAndStrip($data['podcast']);
+        }
         self::validatePodcastMetadata($data['podcast']);
         if (array_key_exists('auto_ingest', $data['podcast'])) {
             self::_updateAutoIngestTimestamp($podcast, $data);
@@ -366,6 +474,10 @@ class Application_Service_PodcastService
         $data['podcast']['itunes_explicit'] = $data['podcast']['itunes_explicit'] ? 'yes' : 'clean';
         $podcast->fromArray($data['podcast'], BasePeer::TYPE_FIELDNAME);
         $podcast->save();
+
+        if ((string) $podcastId === (string) Application_Model_Preference::getStationPodcastId()) {
+            return self::getPodcastById((int) $podcastId);
+        }
 
         return $podcast->toArray(BasePeer::TYPE_FIELDNAME);
     }
@@ -393,15 +505,73 @@ class Application_Service_PodcastService
         }
     }
 
-    private static function addEscapedChild($node, $name, $value = null, $namespace = null)
+    private static function appendRssTextElement(\DOMDocument $doc, \DOMElement $parent, string $tag, ?string $value)
     {
-        if (empty($value)) {
-            return null;
+        if ($value === null || $value === '') {
+            return;
         }
-        $child = $node->addChild($name, null, $namespace);
-        $child[0] = $value;
+        $el = $doc->createElement($tag);
+        $el->appendChild($doc->createTextNode($value));
+        $parent->appendChild($el);
+    }
 
-        return $child;
+    private static function appendItunesNsElement(\DOMDocument $doc, \DOMElement $parent, string $localName, ?string $value)
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+        $el = $doc->createElementNS(ITUNES_XML_NAMESPACE_URL, 'itunes:' . $localName);
+        $el->appendChild($doc->createTextNode($value));
+        $parent->appendChild($el);
+    }
+
+    private static function stationRssExplicitString($explicitDbField)
+    {
+        return trim((string) $explicitDbField) === 'yes' ? 'yes' : 'no';
+    }
+
+    /**
+     * @return array{primary: string, sub: string}
+     */
+    private static function resolvedAppleCategoryStringsFromPodcastRow(Podcast $podcast)
+    {
+        $primary = trim(Application_Model_Preference::getPodcastAppleCategoryPrimary());
+        $sub = trim(Application_Model_Preference::getPodcastAppleCategorySubcategory());
+        if ($primary !== '' || $sub !== '') {
+            return ['primary' => $primary, 'sub' => $sub];
+        }
+        $raw = trim((string) $podcast->getDbItunesCategory());
+        if ($raw === '') {
+            return ['primary' => '', 'sub' => ''];
+        }
+        if (strpos($raw, '|') !== false) {
+            $parts = array_pad(explode('|', $raw, 2), 2, '');
+
+            return ['primary' => trim($parts[0]), 'sub' => trim((string) $parts[1])];
+        }
+        $comma = explode(',', $raw);
+
+        return ['primary' => trim($comma[0]), 'sub' => ''];
+    }
+
+    private static function appendItunesCategoryElements(\DOMDocument $doc, \DOMElement $channel, $primary, $sub)
+    {
+        if ($primary === '') {
+            return;
+        }
+        $ns = ITUNES_XML_NAMESPACE_URL;
+        if ($sub !== '') {
+            $outer = $doc->createElementNS($ns, 'itunes:category');
+            $outer->setAttribute('text', $primary);
+            $inner = $doc->createElementNS($ns, 'itunes:category');
+            $inner->setAttribute('text', $sub);
+            $outer->appendChild($inner);
+            $channel->appendChild($outer);
+        } else {
+            $c = $doc->createElementNS($ns, 'itunes:category');
+            $c->setAttribute('text', $primary);
+            $channel->appendChild($c);
+        }
     }
 
     public static function createStationRssFeed()
@@ -414,108 +584,126 @@ class Application_Service_PodcastService
                 throw new PodcastNotFoundException();
             }
 
-            $xml = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"/>');
-
-            $channel = $xml->addChild('channel');
-            self::addEscapedChild($channel, 'title', $podcast->getDbTitle());
-            self::addEscapedChild($channel, 'link', $podcast->getDbLink());
-            self::addEscapedChild($channel, 'description', $podcast->getDbDescription());
-            self::addEscapedChild($channel, 'language', $podcast->getDbLanguage());
-            self::addEscapedChild($channel, 'copyright', $podcast->getDbCopyright());
-
-            $xml->addAttribute('xmlns:xmlns:atom', 'http://www.w3.org/2005/Atom');
-
-            $atomLink = $channel->addChild('xmlns:atom:link');
-            $atomLink->addAttribute('href', Config::getPublicUrl() . 'feeds/station-rss');
-            $atomLink->addAttribute('rel', 'self');
-            $atomLink->addAttribute('type', 'application/rss+xml');
-
-            $imageUrl = Config::getPublicUrl() . 'api/station-logo';
-            $image = $channel->addChild('image');
-            $image->addChild('title', htmlspecialchars($podcast->getDbTitle() ?? ''));
-            self::addEscapedChild($image, 'url', $imageUrl);
-            self::addEscapedChild($image, 'link', Config::getPublicUrl());
-
-            $xml->addAttribute('xmlns:xmlns:itunes', ITUNES_XML_NAMESPACE_URL);
-            self::addEscapedChild($channel, 'xmlns:itunes:author', $podcast->getDbItunesAuthor());
-            self::addEscapedChild($channel, 'xmlns:itunes:keywords', $podcast->getDbItunesKeywords());
-            self::addEscapedChild($channel, 'xmlns:itunes:summary', $podcast->getDbItunesSummary());
-            self::addEscapedChild($channel, 'xmlns:itunes:subtitle', $podcast->getDbItunesSubtitle());
-            self::addEscapedChild($channel, 'xmlns:itunes:explicit', $podcast->getDbItunesExplicit());
-            $owner = $channel->addChild('xmlns:itunes:owner');
-            self::addEscapedChild($owner, 'xmlns:itunes:name', Application_Model_Preference::GetStationName());
-            self::addEscapedChild($owner, 'xmlns:itunes:email', Application_Model_Preference::GetEmail());
-
-            $itunesImage = $channel->addChild('xmlns:itunes:image');
-            $itunesImage->addAttribute('href', $imageUrl);
-
-            // Need to split categories into separate tags
-            $itunesCategories = explode(',', $podcast->getDbItunesCategory());
-            foreach ($itunesCategories as $c) {
-                if (!empty($c)) {
-                    $category = $channel->addChild('xmlns:itunes:category');
-                    $category->addAttribute('text', $c);
-                }
+            $public = rtrim(Config::getPublicUrl(), '/');
+            $selfUrl = (string) $podcast->getDbUrl();
+            if ($selfUrl === '') {
+                $selfUrl = $public . '/feeds/station-rss';
             }
+            $artHref = $public . '/api/station-podcast-artwork';
 
-            $episodes = PodcastEpisodesQuery::create()->filterByDbPodcastId($stationPodcastId)->find();
+            $doc = new DOMDocument('1.0', 'UTF-8');
+            $doc->formatOutput = true;
+
+            $rss = $doc->createElement('rss');
+            $rss->setAttribute('version', '2.0');
+            $rss->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:itunes', ITUNES_XML_NAMESPACE_URL);
+            $rss->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:atom', 'http://www.w3.org/2005/Atom');
+            $rss->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:content', 'http://purl.org/rss/1.0/modules/content/');
+            $doc->appendChild($rss);
+
+            $channel = $doc->createElement('channel');
+            $rss->appendChild($channel);
+
+            self::appendRssTextElement($doc, $channel, 'title', $podcast->getDbTitle());
+            self::appendRssTextElement($doc, $channel, 'link', $podcast->getDbLink());
+            self::appendRssTextElement($doc, $channel, 'description', $podcast->getDbDescription());
+            self::appendRssTextElement($doc, $channel, 'language', $podcast->getDbLanguage());
+            self::appendRssTextElement($doc, $channel, 'copyright', $podcast->getDbCopyright());
+
+            $atom = $doc->createElementNS('http://www.w3.org/2005/Atom', 'atom:link');
+            $atom->setAttribute('href', $selfUrl);
+            $atom->setAttribute('rel', 'self');
+            $atom->setAttribute('type', 'application/rss+xml');
+            $channel->appendChild($atom);
+
+            $image = $doc->createElement('image');
+            self::appendRssTextElement($doc, $image, 'title', $podcast->getDbTitle());
+            self::appendRssTextElement($doc, $image, 'url', $artHref);
+            self::appendRssTextElement($doc, $image, 'link', Config::getPublicUrl());
+            $channel->appendChild($image);
+
+            $author = $podcast->getDbItunesAuthor();
+            if ($author === null || trim($author) === '') {
+                $author = Application_Model_Preference::GetStationName();
+            }
+            self::appendItunesNsElement($doc, $channel, 'author', $author);
+
+            self::appendItunesNsElement($doc, $channel, 'summary', $podcast->getDbItunesSummary());
+            self::appendItunesNsElement($doc, $channel, 'subtitle', $podcast->getDbItunesSubtitle());
+            self::appendItunesNsElement($doc, $channel, 'keywords', $podcast->getDbItunesKeywords());
+            self::appendItunesNsElement($doc, $channel, 'explicit', self::stationRssExplicitString($podcast->getDbItunesExplicit()));
+            self::appendItunesNsElement($doc, $channel, 'type', Application_Model_Preference::getPodcastAppleShowType());
+
+            $ownerNamePref = trim(Application_Model_Preference::getPodcastAppleOwnerName());
+            $ownerName = $ownerNamePref !== '' ? $ownerNamePref : Application_Model_Preference::GetStationName();
+            $ownerEmailPref = trim(Application_Model_Preference::getPodcastAppleOwnerEmail());
+            $ownerEmail = $ownerEmailPref !== '' ? $ownerEmailPref : (string) Application_Model_Preference::GetEmail();
+
+            $owner = $doc->createElementNS(ITUNES_XML_NAMESPACE_URL, 'itunes:owner');
+            self::appendItunesNsElement($doc, $owner, 'name', $ownerName);
+            self::appendItunesNsElement($doc, $owner, 'email', $ownerEmail);
+            $channel->appendChild($owner);
+
+            $ti = $doc->createElementNS(ITUNES_XML_NAMESPACE_URL, 'itunes:image');
+            $ti->setAttribute('href', $artHref);
+            $channel->appendChild($ti);
+
+            $cats = self::resolvedAppleCategoryStringsFromPodcastRow($podcast);
+            self::appendItunesCategoryElements($doc, $channel, $cats['primary'], $cats['sub']);
+
+            $chExplicit = self::stationRssExplicitString($podcast->getDbItunesExplicit());
+
+            $episodes = PodcastEpisodesQuery::create()
+                ->filterByDbPodcastId($stationPodcastId)
+                ->orderByDbPublicationDate(\Criteria::DESC)
+                ->find();
+
             foreach ($episodes as $episode) {
-                $item = $channel->addChild('item');
+                /** @var PodcastEpisodes $episode */
                 $publishedFile = CcFilesQuery::create()->findPk($episode->getDbFileId());
-
-                // title
-                self::addEscapedChild($item, 'title', $publishedFile->getDbTrackTitle());
-
-                // link - do we need this?
-
-                // pubDate
-                self::addEscapedChild($item, 'pubDate', gmdate(DATE_RFC2822, strtotime($episode->getDbPublicationDate())));
-
-                // category
-                foreach ($itunesCategories as $c) {
-                    if (!empty($c)) {
-                        self::addEscapedChild($item, 'category', $c);
-                    }
+                if (!$publishedFile) {
+                    continue;
                 }
 
-                // guid
-                $guid = self::addEscapedChild($item, 'guid', $episode->getDbEpisodeGuid());
-                $guid->addAttribute('isPermaLink', 'false');
+                $item = $doc->createElement('item');
 
-                // description
-                self::addEscapedChild($item, 'description', $publishedFile->getDbDescription());
+                self::appendRssTextElement($doc, $item, 'title', $publishedFile->getDbTrackTitle());
+                self::appendRssTextElement($doc, $item, 'pubDate', gmdate(DATE_RFC2822, strtotime((string) $episode->getDbPublicationDate())));
+                foreach (array_filter([$cats['primary'], $cats['sub']]) as $c) {
+                    self::appendRssTextElement($doc, $item, 'category', $c);
+                }
 
-                // encolsure - url, length, type attribs
-                $enclosure = $item->addChild('enclosure');
-                $enclosure->addAttribute('url', $episode->getDbDownloadUrl());
-                $enclosure->addAttribute('length', $publishedFile->getDbFilesize());
-                $enclosure->addAttribute('type', $publishedFile->getDbMime());
+                $guidEl = $doc->createElement('guid');
+                $guidEl->appendChild($doc->createTextNode((string) $episode->getDbEpisodeGuid()));
+                $guidEl->setAttribute('isPermaLink', 'false');
+                $item->appendChild($guidEl);
 
-                // itunes:subtitle
-                // From https://www.apple.com/ca/itunes/podcasts/specs.html#subtitle :
-                // 'The contents of the <itunes:subtitle> tag are displayed in the Description column in iTunes.'
-                // self::addEscapedChild($item, "xmlns:itunes:subtitle", $publishedFile->getDbTrackTitle());
-                self::addEscapedChild($item, 'xmlns:itunes:subtitle', $publishedFile->getDbDescription());
+                $desc = trim((string) ($publishedFile->getDbDescription() ?? ''));
+                if ($desc === '') {
+                    $desc = (string) ($publishedFile->getDbTrackTitle() ?? '');
+                }
+                self::appendRssTextElement($doc, $item, 'description', $desc);
 
-                // itunes:summary
-                self::addEscapedChild($item, 'xmlns:itunes:summary', $publishedFile->getDbDescription());
+                $enclosure = $doc->createElement('enclosure');
+                $enclosure->setAttribute('url', $episode->getDbDownloadUrl());
+                $enclosure->setAttribute('length', (string) $publishedFile->getDbFilesize());
+                $enclosure->setAttribute('type', $publishedFile->getDbMime());
+                $item->appendChild($enclosure);
 
-                // itunes:author
-                self::addEscapedChild($item, 'xmlns:itunes:author', $publishedFile->getDbArtistName());
+                self::appendItunesNsElement($doc, $item, 'subtitle', $desc);
+                self::appendItunesNsElement($doc, $item, 'summary', $desc);
+                self::appendItunesNsElement($doc, $item, 'author', $publishedFile->getDbArtistName());
+                self::appendItunesNsElement($doc, $item, 'explicit', $chExplicit);
+                self::appendItunesNsElement($doc, $item, 'episodeType', 'full');
+                self::appendItunesNsElement($doc, $item, 'duration', explode('.', (string) $publishedFile->getDbLength())[0]);
 
-                // itunes:explicit - skip this?
-
-                // itunes:duration
-                self::addEscapedChild($item, 'xmlns:itunes:duration', explode('.', $publishedFile->getDbLength())[0]);
+                $channel->appendChild($item);
             }
 
-            // Format it nicely with newlines...
-            $dom = new DOMDocument();
-            $dom->loadXML($xml->asXML());
-            $dom->formatOutput = true;
+            return $doc->saveXML();
+        } catch (Exception $e) {
+            Logging::error('createStationRssFeed: ' . $e->getMessage());
 
-            return $dom->saveXML();
-        } catch (FeedException $e) {
             return false;
         }
     }

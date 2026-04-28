@@ -4,19 +4,50 @@ class Application_Model_ListenerStat
 {
     public function __construct() {}
 
+    private static function getEnabledMountNames()
+    {
+        $mountNames = [];
+        foreach (Application_Model_StreamSetting::getEnabledStreamIds() as $streamId) {
+            $stream = Application_Model_StreamSetting::getStreamDataNormalized($streamId);
+            if (($stream['output'] ?? '') === 'shoutcast') {
+                $mountNames[] = 'shoutcast';
+                continue;
+            }
+
+            if (!empty($stream['mount'])) {
+                $mountNames[] = $stream['mount'];
+            }
+        }
+
+        return array_values(array_unique($mountNames));
+    }
+
     public static function getDataPointsWithinRange($p_start, $p_end)
     {
-        $sql = <<<'SQL'
+        $mountNames = self::getEnabledMountNames();
+        if (empty($mountNames)) {
+            return [];
+        }
+
+        $mountParams = [];
+        $params = ['p1' => $p_start, 'p2' => $p_end];
+        foreach ($mountNames as $idx => $mountName) {
+            $paramName = 'mount' . $idx;
+            $mountParams[] = ':' . $paramName;
+            $params[$paramName] = $mountName;
+        }
+
+        $sql = '
 SELECT mount_name, count(*)
     FROM cc_listener_count AS lc
     INNER JOIN cc_timestamp AS ts ON (lc.timestamp_id = ts.ID)
     INNER JOIN cc_mount_name AS mn ON (lc.mount_name_id = mn.ID)
 WHERE (ts.timestamp >=:p1 AND ts.timestamp <=:p2)
-group by mount_name
-SQL;
+    AND mount_name IN (' . implode(', ', $mountParams) . ')
+GROUP BY mount_name';
         $data = Application_Common_Database::prepareAndExecute(
             $sql,
-            ['p1' => $p_start, 'p2' => $p_end]
+            $params
         );
         $out = [];
 

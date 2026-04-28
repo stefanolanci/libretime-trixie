@@ -146,29 +146,80 @@ var AIRTIME = (function (AIRTIME) {
    *
    * @constructor
    */
-  function StationPodcastController($scope, $http, podcast, tab) {
-    // Super call to parent controller
+  function StationPodcastController($scope, $http, podcast, tab, applePodcastCategories) {
     PodcastController.call(this, $scope, $http, podcast, tab);
-    this.onSaveCallback = function () {
-      $http({
-        method: "POST",
-        url: "/preference/station-podcast-settings",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        data: {
-          stationPodcastPrivacy: $("#podcast-settings")
-            .find("input:checked")
-            .val(),
-        },
-      }).success(function (data) {
-        jQuery.extend($scope.podcast, data);
-        $(".success")
-          .text($.i18n._("Podcast settings saved"))
-          .slideDown("fast");
-        setTimeout(function () {
-          $(".success").slideUp("fast");
-        }, 2000);
-      });
+
+    var cats = applePodcastCategories || {};
+
+    $scope.appleCategoryHierarchy = cats;
+    $scope.applePrimaryList = Object.keys(cats).sort();
+    $scope.appleSubList = [""];
+    $scope.artworkCacheBuster = 0;
+
+    function rebuildAppleSubcategories() {
+      var p = ($scope.podcast && $scope.podcast.apple_category_primary) || "";
+      var subs = cats[p];
+      var list = [""];
+      if (subs && subs.length) {
+        subs.forEach(function (sub) {
+          list.push(sub);
+        });
+      }
+      $scope.appleSubList = list;
+      var cur =
+        ($scope.podcast && $scope.podcast.apple_category_subcategory) || "";
+      if (cur !== "" && list.indexOf(cur) === -1) {
+        $scope.podcast.apple_category_subcategory = "";
+      }
+    }
+
+    rebuildAppleSubcategories();
+    $scope.$watch("podcast.apple_category_primary", function () {
+      rebuildAppleSubcategories();
+    });
+
+    $scope.subcategoryLabel = function (s) {
+      if (s === "" || !s) {
+        return $.i18n._("None");
+      }
+      return s;
     };
+
+    $scope.subcategorySelectDisabled = function () {
+      var p = ($scope.podcast && $scope.podcast.apple_category_primary) || "";
+      var subs = cats[p];
+      return !subs || !subs.length;
+    };
+
+    $scope.savePodcast = function () {
+      $http
+        .put(endpoint + $scope.podcast.id, {
+          csrf_token: $scope.csrf,
+          podcast: $scope.podcast,
+        })
+        .success(function (data) {
+          jQuery.extend($scope.podcast, data);
+          $http({
+            method: "POST",
+            url: "/preference/station-podcast-settings",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            data: {
+              stationPodcastPrivacy: $("#podcast-settings")
+                .find("input:checked")
+                .val(),
+            },
+          }).success(function (pdata) {
+            jQuery.extend($scope.podcast, pdata);
+            $(".success")
+              .text($.i18n._("Podcast settings saved"))
+              .slideDown("fast");
+            setTimeout(function () {
+              $(".success").slideUp("fast");
+            }, 2000);
+          });
+        });
+    };
+
     return this;
   }
 
@@ -311,8 +362,52 @@ var AIRTIME = (function (AIRTIME) {
    * Initialize the Station podcast.
    */
   StationPodcastController.prototype.initialize = function () {
-    // We want to override the default tab name behaviour and use "My Podcast" for clarity
     this._initTable();
+    this._setupStationPodcastArtwork();
+  };
+
+  StationPodcastController.prototype._setupStationPodcastArtwork = function () {
+    var $scope = this.$scope,
+      $http = this.$http,
+      wrap = $("#station_podcast");
+
+    wrap
+      .find("#podcast-apple-artwork-input")
+      .on("change", function (e) {
+        var f = e.target.files && e.target.files[0];
+        if (!f) return;
+        var fd = new FormData();
+        fd.append("artwork", f);
+        fd.append("csrf_token", $scope.csrf);
+        $http
+          .post("/preference/station-podcast-apple-artwork", fd, {
+            transformRequest: angular.identity,
+            headers: { "Content-Type": undefined },
+          })
+          .success(function (resp) {
+            if (resp.valid && resp.podcast) {
+              jQuery.extend($scope.podcast, resp.podcast);
+              $scope.artworkCacheBuster = ($scope.artworkCacheBuster || 0) + 1;
+            }
+            e.target.value = "";
+          });
+      });
+
+    wrap.find("#podcast-apple-artwork-remove").on("click", function () {
+      $http
+        .post(
+          "/preference/remove-podcast-apple-artwork",
+          $.param({ csrf_token: $scope.csrf }),
+          { headers: { "Content-Type": "application/x-www-form-urlencoded" } },
+        )
+        .success(function (resp) {
+          if (resp.valid && resp.podcast) {
+            jQuery.extend($scope.podcast, resp.podcast);
+            $scope.artworkCacheBuster = ($scope.artworkCacheBuster || 0) + 1;
+          }
+        });
+      return false;
+    });
   };
 
   /**
@@ -343,8 +438,10 @@ var AIRTIME = (function (AIRTIME) {
       "$http",
       "podcast",
       "tab",
+      "applePodcastCategories",
       StationPodcastController,
-    ]);
+    ])
+    .value("applePodcastCategories", {});
 
   /**
    * Implement bulk editing of podcasts in order to accommodate the existing selection

@@ -20,6 +20,7 @@ class ApiController extends Zend_Controller_Action
             'week-info',
             'station-metadata',
             'station-logo',
+            'station-podcast-artwork',
             'show-history-feed',
             'item-history-feed',
             'shows',
@@ -708,8 +709,47 @@ class ApiController extends Zend_Controller_Action
     }
 
     /**
-     * API endpoint to display the current station logo.
+     * Public cover art for station podcast RSS (itunes:image). Uses dedicated Apple artwork if set, otherwise the station logo.
      */
+    public function stationPodcastArtworkAction()
+    {
+        $this->view->layout()->disableLayout();
+        $this->_helper->viewRenderer->setNoRender(true);
+
+        $rawDedicated = Application_Model_Preference::getPodcastAppleArtworkDecoded();
+        if ($rawDedicated === '') {
+            $b64 = Application_Model_Preference::GetStationLogo();
+            if ($b64 === '' || $b64 === null) {
+                header('HTTP/1.0 404 Not Found');
+
+                return;
+            }
+            $blob = base64_decode((string) $b64, true);
+        } else {
+            $blob = $rawDedicated;
+        }
+
+        if ($blob === false || $blob === '') {
+            header('HTTP/1.0 404 Not Found');
+
+            return;
+        }
+
+        $mime = '';
+        if ($rawDedicated !== '') {
+            $mime = Application_Model_Preference::getPodcastAppleArtworkMime();
+        }
+        if ($mime === '') {
+            $f = finfo_open();
+            $mime = finfo_buffer($f, $blob, FILEINFO_MIME_TYPE);
+            finfo_close($f);
+        }
+
+        header('Content-Type: ' . $mime);
+        header('Cache-Control: public, max-age=3600');
+        echo $blob;
+    }
+
     public function stationLogoAction()
     {
         if (Application_Model_Preference::GetAllow3rdPartyApi() || $this->checkAuth()) {

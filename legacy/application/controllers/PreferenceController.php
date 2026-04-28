@@ -125,6 +125,95 @@ class PreferenceController extends Zend_Controller_Action
         $this->_helper->json->sendJson(['url' => $url]);
     }
 
+    /**
+     * Upload dedicated JPG/PNG cover art for the station RSS feed / Apple Podcasts.
+     */
+    public function stationPodcastAppleArtworkAction()
+    {
+        SessionHelper::reopenSessionForWriting();
+
+        $this->view->layout()->disableLayout();
+        $this->_helper->viewRenderer->setNoRender(true);
+
+        if (!$this->getRequest()->isPost()) {
+            $this->getResponse()->setHttpResponseCode(405);
+            $this->_helper->json->sendJson(['valid' => false, 'error' => _('Method not allowed')]);
+
+            return;
+        }
+
+        if (!SecurityHelper::verifyCSRFToken($this->_getParam('csrf_token'))) {
+            Logging::error(__FILE__ . ': Invalid CSRF token');
+            $this->_helper->json->sendJson([
+                'valid' => false,
+                'error' => _('CSRF token did not match.'),
+            ]);
+
+            return;
+        }
+
+        if (empty($_FILES['artwork']['tmp_name'])) {
+            $this->_helper->json->sendJson([
+                'valid' => false,
+                'error' => _('No file uploaded.'),
+            ]);
+
+            return;
+        }
+
+        Application_Model_Preference::setPodcastAppleArtworkFromFile($_FILES['artwork']['tmp_name']);
+
+        try {
+            $payload = Application_Service_PodcastService::getPartialStationPodcastAppleUiPayload();
+            $this->_helper->json->sendJson(['valid' => true, 'podcast' => $payload]);
+        } catch (Exception $e) {
+            Logging::error($e->getMessage());
+            $this->_helper->json->sendJson([
+                'valid' => false,
+                'error' => _('Could not refresh podcast metadata.'),
+            ]);
+        }
+    }
+
+    /** Remove uploaded Apple podcast artwork (feed falls back to station logo). */
+    public function removePodcastAppleArtworkAction()
+    {
+        SessionHelper::reopenSessionForWriting();
+
+        $this->view->layout()->disableLayout();
+        $this->_helper->viewRenderer->setNoRender(true);
+
+        if (!$this->getRequest()->isPost()) {
+            $this->getResponse()->setHttpResponseCode(405);
+            $this->_helper->json->sendJson(['valid' => false, 'error' => _('Method not allowed')]);
+
+            return;
+        }
+
+        if (!SecurityHelper::verifyCSRFToken($this->_getParam('csrf_token'))) {
+            Logging::error(__FILE__ . ': Invalid CSRF token');
+            $this->_helper->json->sendJson([
+                'valid' => false,
+                'error' => _('CSRF token did not match.'),
+            ]);
+
+            return;
+        }
+
+        Application_Model_Preference::clearPodcastAppleArtwork();
+
+        try {
+            $payload = Application_Service_PodcastService::getPartialStationPodcastAppleUiPayload();
+            $this->_helper->json->sendJson(['valid' => true, 'podcast' => $payload]);
+        } catch (Exception $e) {
+            Logging::error($e->getMessage());
+            $this->_helper->json->sendJson([
+                'valid' => false,
+                'error' => _('Could not refresh podcast metadata.'),
+            ]);
+        }
+    }
+
     public function directoryConfigAction() {}
 
     public function removeLogoAction()
