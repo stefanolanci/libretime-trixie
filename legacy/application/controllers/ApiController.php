@@ -716,37 +716,36 @@ class ApiController extends Zend_Controller_Action
         $this->view->layout()->disableLayout();
         $this->_helper->viewRenderer->setNoRender(true);
 
-        $rawDedicated = Application_Model_Preference::getPodcastAppleArtworkDecoded();
-        if ($rawDedicated === '') {
-            $b64 = Application_Model_Preference::GetStationLogo();
-            if ($b64 === '' || $b64 === null) {
-                header('HTTP/1.0 404 Not Found');
+        $payload = Application_Model_Preference::getPodcastAppleArtworkPayload();
+        $blob = $payload['blob'];
 
-                return;
-            }
-            $blob = base64_decode((string) $b64, true);
-        } else {
-            $blob = $rawDedicated;
-        }
-
-        if ($blob === false || $blob === '') {
+        if ($blob === '') {
             header('HTTP/1.0 404 Not Found');
 
             return;
         }
 
-        $mime = '';
-        if ($rawDedicated !== '') {
-            $mime = Application_Model_Preference::getPodcastAppleArtworkMime();
-        }
-        if ($mime === '') {
-            $f = finfo_open();
-            $mime = finfo_buffer($f, $blob, FILEINFO_MIME_TYPE);
-            finfo_close($f);
+        $lastModified = Application_Model_Preference::getPodcastAppleArtworkLastModified();
+        $etag = '"' . $payload['hash'] . '"';
+        $ifNoneMatch = isset($_SERVER['HTTP_IF_NONE_MATCH']) ? trim((string) $_SERVER['HTTP_IF_NONE_MATCH']) : '';
+
+        header('Content-Type: ' . $payload['mime']);
+        header('Cache-Control: public, max-age=3600');
+        header('Last-Modified: ' . gmdate('D, d M Y H:i:s', $lastModified) . ' GMT');
+        header('ETag: ' . $etag);
+
+        if ($ifNoneMatch === $etag) {
+            header('HTTP/1.1 304 Not Modified');
+
+            return;
         }
 
-        header('Content-Type: ' . $mime);
-        header('Cache-Control: public, max-age=3600');
+        header('Content-Length: ' . strlen($blob));
+
+        if (isset($_SERVER['REQUEST_METHOD']) && strtoupper((string) $_SERVER['REQUEST_METHOD']) === 'HEAD') {
+            return;
+        }
+
         echo $blob;
     }
 

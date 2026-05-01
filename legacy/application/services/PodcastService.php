@@ -343,13 +343,21 @@ class Application_Service_PodcastService
         $podcast['podcast_apple_show_type'] = Application_Model_Preference::getPodcastAppleShowType();
 
         $podcast['has_dedicated_podcast_artwork'] = Application_Model_Preference::getPodcastAppleArtworkDecoded() !== '';
-        $podcast['artwork_public_url'] = rtrim(Config::getPublicUrl(), '/') . '/api/station-podcast-artwork';
+        $podcast['artwork_public_url'] = self::getStationPodcastArtworkPublicUrl();
 
         $diag = Application_Service_PodcastFeedValidationService::getStationReadiness();
         $podcast['apple_readiness'] = [
             'errors' => $diag['errors'],
             'warnings' => $diag['warnings'],
         ];
+    }
+
+    public static function getStationPodcastArtworkPublicUrl()
+    {
+        $payload = Application_Model_Preference::getPodcastAppleArtworkPayload();
+        $ext = Application_Model_Preference::getPodcastAppleArtworkExtension($payload['mime']);
+
+        return rtrim(Config::getPublicUrl(), '/') . '/api/station-podcast-artwork/podcast-artwork-' . $payload['hash'] . '.' . $ext;
     }
 
     /**
@@ -589,7 +597,7 @@ class Application_Service_PodcastService
             if ($selfUrl === '') {
                 $selfUrl = $public . '/feeds/station-rss';
             }
-            $artHref = $public . '/api/station-podcast-artwork';
+            $artHref = self::getStationPodcastArtworkPublicUrl();
 
             $doc = new DOMDocument('1.0', 'UTF-8');
             $doc->formatOutput = true;

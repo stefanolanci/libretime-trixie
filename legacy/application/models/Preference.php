@@ -1709,6 +1709,63 @@ class Application_Model_Preference
         return $raw !== false && $raw !== '' ? $raw : '';
     }
 
+    /**
+     * @return array{blob: string, mime: string, hash: string}
+     */
+    public static function getPodcastAppleArtworkPayload()
+    {
+        $rawDedicated = self::getPodcastAppleArtworkDecoded();
+        if ($rawDedicated === '') {
+            $b64 = self::GetStationLogo();
+            if ($b64 === '' || $b64 === null) {
+                return ['blob' => '', 'mime' => '', 'hash' => 'missing'];
+            }
+            $blob = base64_decode((string) $b64, true);
+        } else {
+            $blob = $rawDedicated;
+        }
+
+        if ($blob === false || $blob === '') {
+            return ['blob' => '', 'mime' => '', 'hash' => 'missing'];
+        }
+
+        $mime = '';
+        if ($rawDedicated !== '') {
+            $mime = self::getPodcastAppleArtworkMime();
+        }
+        if ($mime === '') {
+            $f = finfo_open();
+            $mime = finfo_buffer($f, $blob, FILEINFO_MIME_TYPE);
+            finfo_close($f);
+        }
+        $mime = is_string($mime) ? $mime : '';
+
+        return [
+            'blob' => $blob,
+            'mime' => $mime,
+            'hash' => substr(sha1($mime . "\n" . $blob), 0, 16),
+        ];
+    }
+
+    public static function getPodcastAppleArtworkExtension($mime)
+    {
+        if ($mime === 'image/png') {
+            return 'png';
+        }
+
+        return 'jpg';
+    }
+
+    public static function getPodcastAppleArtworkLastModified()
+    {
+        $ts = (int) self::getValue('podcast_apple_artwork_updated_at');
+        if ($ts > 0) {
+            return $ts;
+        }
+
+        return @filemtime(__FILE__) ?: time();
+    }
+
     public static function setPodcastAppleArtworkFromFile($imagePath)
     {
         if ($imagePath === '' || $imagePath === null) {
@@ -1757,6 +1814,7 @@ class Application_Model_Preference
 
         self::setValue('podcast_apple_artwork_base64', base64_encode($raw));
         self::setValue('podcast_apple_artwork_mime', $mime);
+        self::setValue('podcast_apple_artwork_updated_at', time());
 
         return ['valid' => true];
     }
@@ -1765,6 +1823,7 @@ class Application_Model_Preference
     {
         self::setValue('podcast_apple_artwork_base64', '');
         self::setValue('podcast_apple_artwork_mime', '');
+        self::setValue('podcast_apple_artwork_updated_at', '');
     }
 
     /**

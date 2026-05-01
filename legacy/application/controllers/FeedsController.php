@@ -37,6 +37,17 @@ class FeedsController extends Zend_Controller_Action
         header('Pragma: no-cache');
         header('Accept-Ranges: bytes');
         $size = strlen($rssData);
+        $etag = '"' . substr(sha1($rssData), 0, 16) . '"';
+        $lastModified = Application_Model_Preference::getPodcastAppleArtworkLastModified();
+        $ifNoneMatch = isset($_SERVER['HTTP_IF_NONE_MATCH']) ? trim((string) $_SERVER['HTTP_IF_NONE_MATCH']) : '';
+
+        header('Last-Modified: ' . gmdate('D, d M Y H:i:s', $lastModified) . ' GMT');
+        header('ETag: ' . $etag);
+        if ($ifNoneMatch === $etag) {
+            header('HTTP/1.1 304 Not Modified');
+
+            return;
+        }
 
         $begin = 0;
         $end = $size - 1;
@@ -57,6 +68,10 @@ class FeedsController extends Zend_Controller_Action
             if (isset($_SERVER['HTTP_RANGE'])) {
                 header("Content-Range: bytes {$begin}-{$end}/{$size}");
             }
+        }
+
+        if (isset($_SERVER['REQUEST_METHOD']) && strtoupper((string) $_SERVER['REQUEST_METHOD']) === 'HEAD') {
+            return;
         }
 
         echo $rssData;
