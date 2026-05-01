@@ -1766,6 +1766,18 @@ class Application_Model_Preference
         return @filemtime(__FILE__) ?: time();
     }
 
+    public static function getStationPodcastUpdatedAt()
+    {
+        $ts = (int) self::getValue('station_podcast_updated_at');
+
+        return $ts > 0 ? $ts : 0;
+    }
+
+    public static function touchStationPodcastUpdatedAt()
+    {
+        self::setValue('station_podcast_updated_at', time());
+    }
+
     public static function setPodcastAppleArtworkFromFile($imagePath)
     {
         if ($imagePath === '' || $imagePath === null) {
@@ -1815,6 +1827,7 @@ class Application_Model_Preference
         self::setValue('podcast_apple_artwork_base64', base64_encode($raw));
         self::setValue('podcast_apple_artwork_mime', $mime);
         self::setValue('podcast_apple_artwork_updated_at', time());
+        self::touchStationPodcastUpdatedAt();
 
         return ['valid' => true];
     }
@@ -1824,6 +1837,7 @@ class Application_Model_Preference
         self::setValue('podcast_apple_artwork_base64', '');
         self::setValue('podcast_apple_artwork_mime', '');
         self::setValue('podcast_apple_artwork_updated_at', '');
+        self::touchStationPodcastUpdatedAt();
     }
 
     /**

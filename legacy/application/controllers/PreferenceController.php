@@ -121,6 +121,7 @@ class PreferenceController extends Zend_Controller_Action
             : 'feeds/station-rss');
         $stationPodcast->setDbUrl($url)->save();
         Application_Model_Preference::setStationPodcastPrivacy($values->stationPodcastPrivacy);
+        Application_Model_Preference::touchStationPodcastUpdatedAt();
 
         $this->_helper->json->sendJson(['url' => $url]);
     }

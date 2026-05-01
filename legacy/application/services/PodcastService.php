@@ -360,6 +360,29 @@ class Application_Service_PodcastService
         return rtrim(Config::getPublicUrl(), '/') . '/api/station-podcast-artwork/podcast-artwork-' . $payload['hash'] . '.' . $ext;
     }
 
+    public static function getStationRssFeedLastModified()
+    {
+        $timestamps = [
+            Application_Model_Preference::getPodcastAppleArtworkLastModified(),
+            Application_Model_Preference::getStationPodcastUpdatedAt(),
+            @filemtime(__FILE__) ?: 0,
+            @filemtime(APPLICATION_PATH . '/controllers/FeedsController.php') ?: 0,
+        ];
+
+        $latestEpisode = PodcastEpisodesQuery::create()
+            ->filterByDbPodcastId(Application_Model_Preference::getStationPodcastId())
+            ->orderByDbPublicationDate(\Criteria::DESC)
+            ->findOne();
+        if ($latestEpisode) {
+            $episodeTs = strtotime((string) $latestEpisode->getDbPublicationDate());
+            if ($episodeTs !== false) {
+                $timestamps[] = $episodeTs;
+            }
+        }
+
+        return max($timestamps) ?: time();
+    }
+
     /**
      * Subset of station podcast fields returned after artwork POST/remove.
      *
@@ -484,6 +507,8 @@ class Application_Service_PodcastService
         $podcast->save();
 
         if ((string) $podcastId === (string) Application_Model_Preference::getStationPodcastId()) {
+            Application_Model_Preference::touchStationPodcastUpdatedAt();
+
             return self::getPodcastById((int) $podcastId);
         }
 
@@ -703,6 +728,7 @@ class Application_Service_PodcastService
                 self::appendItunesNsElement($doc, $item, 'author', $publishedFile->getDbArtistName());
                 self::appendItunesNsElement($doc, $item, 'explicit', $chExplicit);
                 self::appendItunesNsElement($doc, $item, 'episodeType', 'full');
+                self::appendItunesNsElement($doc, $item, 'season', '1');
                 self::appendItunesNsElement($doc, $item, 'duration', explode('.', (string) $publishedFile->getDbLength())[0]);
 
                 $channel->appendChild($item);

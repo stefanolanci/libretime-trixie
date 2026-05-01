@@ -38,12 +38,24 @@ class FeedsController extends Zend_Controller_Action
         header('Accept-Ranges: bytes');
         $size = strlen($rssData);
         $etag = '"' . substr(sha1($rssData), 0, 16) . '"';
-        $lastModified = Application_Model_Preference::getPodcastAppleArtworkLastModified();
+        $lastModified = Application_Service_PodcastService::getStationRssFeedLastModified();
         $ifNoneMatch = isset($_SERVER['HTTP_IF_NONE_MATCH']) ? trim((string) $_SERVER['HTTP_IF_NONE_MATCH']) : '';
+        $ifModifiedSince = isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) ? strtotime((string) $_SERVER['HTTP_IF_MODIFIED_SINCE']) : false;
+        $etagMatches = false;
+        foreach (explode(',', $ifNoneMatch) as $candidate) {
+            $candidate = trim($candidate);
+            if ($candidate === '*' || trim(preg_replace('/^W\//', '', $candidate), '"') === trim($etag, '"')) {
+                $etagMatches = true;
+                break;
+            }
+        }
 
         header('Last-Modified: ' . gmdate('D, d M Y H:i:s', $lastModified) . ' GMT');
         header('ETag: ' . $etag);
-        if ($ifNoneMatch === $etag) {
+        if (
+            $etagMatches
+            || ($ifNoneMatch === '' && $ifModifiedSince !== false && $ifModifiedSince >= $lastModified)
+        ) {
             header('HTTP/1.1 304 Not Modified');
 
             return;

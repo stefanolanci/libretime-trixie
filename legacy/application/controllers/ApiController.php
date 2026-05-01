@@ -728,13 +728,21 @@ class ApiController extends Zend_Controller_Action
         $lastModified = Application_Model_Preference::getPodcastAppleArtworkLastModified();
         $etag = '"' . $payload['hash'] . '"';
         $ifNoneMatch = isset($_SERVER['HTTP_IF_NONE_MATCH']) ? trim((string) $_SERVER['HTTP_IF_NONE_MATCH']) : '';
+        $etagMatches = false;
+        foreach (explode(',', $ifNoneMatch) as $candidate) {
+            $candidate = trim($candidate);
+            if ($candidate === '*' || trim(preg_replace('/^W\//', '', $candidate), '"') === trim($etag, '"')) {
+                $etagMatches = true;
+                break;
+            }
+        }
 
         header('Content-Type: ' . $payload['mime']);
         header('Cache-Control: public, max-age=3600');
         header('Last-Modified: ' . gmdate('D, d M Y H:i:s', $lastModified) . ' GMT');
         header('ETag: ' . $etag);
 
-        if ($ifNoneMatch === $etag) {
+        if ($etagMatches) {
             header('HTTP/1.1 304 Not Modified');
 
             return;

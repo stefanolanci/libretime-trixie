@@ -220,11 +220,20 @@ class Application_Service_PodcastEpisodeService extends Application_Service_Thir
             // Even if the task itself succeeds, the download could have failed, so check the status
             if ($status == CELERY_SUCCESS_STATUS && $episode->status == 1) {
                 $dbEpisode->setDbFileId($episode->fileid)->save();
+                if ((string) $dbEpisode->getDbPodcastId() === (string) Application_Model_Preference::getStationPodcastId()) {
+                    Application_Model_Preference::touchStationPodcastUpdatedAt();
+                }
             } else {
                 Logging::warn("Celery task {$task} episode {$episode->episodeid} unsuccessful with message {$episode->error}");
+                if ((string) $dbEpisode->getDbPodcastId() === (string) Application_Model_Preference::getStationPodcastId()) {
+                    Application_Model_Preference::touchStationPodcastUpdatedAt();
+                }
                 $dbEpisode->delete();
             }
         } catch (Exception $e) {
+            if ($dbEpisode && (string) $dbEpisode->getDbPodcastId() === (string) Application_Model_Preference::getStationPodcastId()) {
+                Application_Model_Preference::touchStationPodcastUpdatedAt();
+            }
             $dbEpisode->delete();
             Logging::warn("Catastrophic failure updating from task {$task}, recovering by deleting episode row.\n
                            This can occur if the episode's corresponding CcFile is deleted before being processed.");
@@ -257,6 +266,7 @@ class Application_Service_PodcastEpisodeService extends Application_Service_Thir
         if (!$existing) {
             $e = $this->_buildEpisode($id, $url, $guid, date('r'), $title, $description);
             $e->setDbFileId($fileId)->save();
+            Application_Model_Preference::touchStationPodcastUpdatedAt();
         }
     }
 
@@ -268,10 +278,13 @@ class Application_Service_PodcastEpisodeService extends Application_Service_Thir
     public function unpublish($fileId)
     {
         $id = Application_Model_Preference::getStationPodcastId();
-        PodcastEpisodesQuery::create()
+        $episode = PodcastEpisodesQuery::create()
             ->filterByDbPodcastId($id)
-            ->findOneByDbFileId($fileId)
-            ->delete();
+            ->findOneByDbFileId($fileId);
+        if ($episode) {
+            $episode->delete();
+            Application_Model_Preference::touchStationPodcastUpdatedAt();
+        }
     }
 
     /**
@@ -523,10 +536,14 @@ class Application_Service_PodcastEpisodeService extends Application_Service_Thir
 
     public function deletePodcastEpisodeById($episodeId)
     {
-        $episode = PodcastEpisodesQuery::create()->findByDbId($episodeId);
+        $episode = PodcastEpisodesQuery::create()->findPk($episodeId);
 
         if ($episode) {
+            $isStationPodcast = (string) $episode->getDbPodcastId() === (string) Application_Model_Preference::getStationPodcastId();
             $episode->delete();
+            if ($isStationPodcast) {
+                Application_Model_Preference::touchStationPodcastUpdatedAt();
+            }
         } else {
             throw new PodcastEpisodeNotFoundException();
         }
