@@ -371,6 +371,11 @@ var AIRTIME = (function (AIRTIME) {
       $http = this.$http,
       wrap = $("#station_podcast");
 
+    wrap.find("#podcast-apple-artwork-choose").on("click", function () {
+      wrap.find("#podcast-apple-artwork-input").trigger("click");
+      return false;
+    });
+
     wrap
       .find("#podcast-apple-artwork-input")
       .on("change", function (e) {
@@ -388,7 +393,27 @@ var AIRTIME = (function (AIRTIME) {
             if (resp.valid && resp.podcast) {
               jQuery.extend($scope.podcast, resp.podcast);
               $scope.artworkCacheBuster = ($scope.artworkCacheBuster || 0) + 1;
+              $(".success")
+                .text($.i18n._("Podcast artwork uploaded"))
+                .slideDown("fast");
+              setTimeout(function () {
+                $(".success").slideUp("fast");
+              }, 3000);
+            } else if (resp.error) {
+              $(".success").text(resp.error).slideDown("fast");
+              setTimeout(function () {
+                $(".success").slideUp("fast");
+              }, 6000);
             }
+            e.target.value = "";
+          })
+          .error(function () {
+            $(".success")
+              .text($.i18n._("Podcast artwork upload failed"))
+              .slideDown("fast");
+            setTimeout(function () {
+              $(".success").slideUp("fast");
+            }, 6000);
             e.target.value = "";
           });
       });

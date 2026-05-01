@@ -1241,7 +1241,7 @@ SQL;
         $qry = new CcBlockcriteria();
         $qry->setDbCriteria('repeat_tracks')
             ->setDbModifier('N/A')
-            ->setDbValue($p_criteriaData['etc']['sp_repeat_tracks'])
+            ->setDbValue($p_criteriaData['etc']['sp_repeat_tracks'] ?? 0)
             ->setDbBlockId($this->id)
             ->save();
 
@@ -1249,7 +1249,7 @@ SQL;
         $qry = new CcBlockcriteria();
         $qry->setDbCriteria('overflow_tracks')
             ->setDbModifier('N/A')
-            ->setDbValue($p_criteriaData['etc']['sp_overflow_tracks'])
+            ->setDbValue($p_criteriaData['etc']['sp_overflow_tracks'] ?? 0)
             ->setDbBlockId($this->id)
             ->save();
     }
@@ -1393,7 +1393,10 @@ SQL;
         $allOptions = CriteriaModifier::mapToDisplay();
 
         // Load criteria from db
-        $out = CcBlockcriteriaQuery::create()->orderByDbCriteria()->findByDbBlockId($this->id);
+        $out = CcBlockcriteriaQuery::create()
+            ->orderByDbCriteriaGroup()
+            ->orderByDbId()
+            ->findByDbBlockId($this->id);
         $storedCrit = [];
 
         foreach ($out as $crit) {
@@ -1443,7 +1446,10 @@ SQL;
         $modifierOptions = CriteriaModifier::mapToDisplay();
 
         // Load criteria from db
-        $out = CcBlockcriteriaQuery::create()->orderByDbCriteria()->findByDbBlockId($this->id);
+        $out = CcBlockcriteriaQuery::create()
+            ->orderByDbCriteriaGroup()
+            ->orderByDbId()
+            ->findByDbBlockId($this->id);
         $storedCrit = [];
 
         foreach ($out as $crit) {
@@ -1690,49 +1696,18 @@ SQL;
 
     public static function organizeSmartPlaylistCriteria($p_criteria)
     {
-        $fieldNames = ['sp_criteria_field', 'sp_criteria_modifier', 'sp_criteria_value', 'sp_criteria_extra', 'sp_criteria_datetime_select', 'sp_criteria_extra_datetime_select'];
         $output = [];
         foreach ($p_criteria as $ele) {
             if (!isset($ele['name'], $ele['value'])) {
                 continue;
             }
             $name = $ele['name'];
-            $index = strrpos($name, '_');
-            if ($index === false) {
-                $output['etc'][$name] = $ele['value'];
-                continue;
-            }
 
-            /* Strip field name of modifier index
-             * Ex: sp_criteria_field_0_0 -> sp_criteria_field_0
-             */
-            $fieldName = substr($name, 0, $index);
-
-            $tempName = $name;
-            $critIndex = null;
-            preg_match('/^\D*(?=\d)/', $tempName, $r);
-            if (isset($r[0]) && $r[0] !== '') {
-                $critIndexPos = strlen($r[0]);
-                if (isset($tempName[$critIndexPos])) {
-                    $critIndex = $tempName[$critIndexPos];
-                }
-            }
-
-            $lastChar = substr($name, -1);
-
-            if (!preg_match('/^[a-zA-Z]$/', $lastChar)) {
-                $n = strrpos($fieldName, '_');
-                if ($n !== false) {
-                    $fieldName = substr($fieldName, 0, $n);
-                }
-            }
-
-            if (in_array($fieldName, $fieldNames, true)) {
-                if ($critIndex === null) {
-                    $output['etc'][$name] = $ele['value'];
-                    continue;
-                }
-                $output['criteria'][$critIndex][$lastChar][$fieldName] = trim((string) $ele['value']);
+            if (preg_match('/^(sp_criteria_(?:field|modifier|value|extra|datetime_select|extra_datetime_select))_(\d+)_(\d+)$/', $name, $matches)) {
+                $fieldName = $matches[1];
+                $critIndex = (int) $matches[2];
+                $modifierIndex = (int) $matches[3];
+                $output['criteria'][$critIndex][$modifierIndex][$fieldName] = trim((string) $ele['value']);
             } else {
                 $output['etc'][$name] = $ele['value'];
             }

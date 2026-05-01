@@ -57,13 +57,14 @@ class Application_Form_SmartBlockCriteria extends Zend_Form_SubForm
     {
         if (!isset($this->trackTypeOptions)) {
             $tracktypes = Application_Model_Tracktype::getTracktypes();
-            $names[] = _('Select Track Type');
+            $names = [_('Select Track Type')];
             foreach ($tracktypes as $arr => $a) {
                 $names[$a['id']] = $tracktypes[$arr]['type_name'];
             }
+            $this->trackTypeOptions = $names;
         }
 
-        return $names;
+        return $this->trackTypeOptions;
     }
 
     public function init() {}
@@ -511,9 +512,19 @@ class Application_Form_SmartBlockCriteria extends Zend_Form_SubForm
                     $this->addElement($criteriaModifers);
 
                     // VALUE
-                    $criteriaValue = new Zend_Form_Element_Text('sp_criteria_value_' . $critMod);
-                    $criteriaValue->setAttrib('class', 'input_text sp_input_text')
-                        ->setDecorators(['viewHelper']);
+                    if (
+                        $blockCriteria->type == ModifierType::TRACK_TYPE
+                        && in_array($modInfo['sp_criteria_modifier'], ['is', 'is not'], true)
+                    ) {
+                        $criteriaValue = new Zend_Form_Element_Select('sp_criteria_value_' . $critMod);
+                        $criteriaValue->setAttrib('class', 'input_select sp_input_select')
+                            ->setDecorators(['viewHelper'])
+                            ->setMultiOptions($this->getTracktypeOptions());
+                    } else {
+                        $criteriaValue = new Zend_Form_Element_Text('sp_criteria_value_' . $critMod);
+                        $criteriaValue->setAttrib('class', 'input_text sp_input_text')
+                            ->setDecorators(['viewHelper']);
+                    }
                     $criteriaValue->setValue($modInfo['sp_criteria_value']);
                     $this->addElement($criteriaValue);
                     // DATETIME UNIT SELECT
@@ -521,14 +532,14 @@ class Application_Form_SmartBlockCriteria extends Zend_Form_SubForm
                     $criteriaDatetimeSelect = new Zend_Form_Element_Select('sp_criteria_datetime_select_' . $critMod);
                     $criteriaDatetimeSelect->setAttrib('class', 'input_select sp_input_select')
                         ->setDecorators(['viewHelper']);
-                    if ($this->enableDateTimeUnit($criteriaValue->getValue())) {
+                    if ($this->enableDateTimeUnit($criteriaModifers->getValue())) {
                         $criteriaDatetimeSelect->setAttrib('enabled', 'enabled');
                         $criteriaDatetimeSelect->setAttrib('disabled', null);
                         $criteriaDatetimeSelect->setValue($modInfo['sp_criteria_datetime_select']);
-                        $this->addElement($criteriaDatetimeSelect);
                     } else {
                         $criteriaDatetimeSelect->setAttrib('disabled', 'disabled');
                     }
+                    $this->addElement($criteriaDatetimeSelect);
                     // EXTRA
                     $criteriaExtra = new Zend_Form_Element_Text('sp_criteria_extra_' . $critMod);
                     $criteriaExtra->setAttrib('class', 'input_text sp_extra_input_text')
@@ -546,14 +557,14 @@ class Application_Form_SmartBlockCriteria extends Zend_Form_SubForm
                     $criteriaExtraDatetimeSelect = new Zend_Form_Element_Select('sp_criteria_extra_datetime_select_' . $critMod);
                     $criteriaExtraDatetimeSelect->setAttrib('class', 'input_select sp_input_select')
                         ->setDecorators(['viewHelper']);
-                    if ($criteriaValue->getValue() == 'between') {
+                    if ($criteriaModifers->getValue() == 'between') {
                         $criteriaExtraDatetimeSelect->setAttrib('enabled', 'enabled');
                         $criteriaExtraDatetimeSelect->setAttrib('disabled', null);
                         $criteriaExtraDatetimeSelect->setValue($modInfo['sp_criteria_extra_datetime_select']);
-                        $this->addElement($criteriaExtraDatetimeSelect);
                     } else {
                         $criteriaExtraDatetimeSelect->setAttrib('disabled', 'disabled');
                     }
+                    $this->addElement($criteriaExtraDatetimeSelect);
                     ++$count;
                 }
             }
@@ -595,7 +606,7 @@ class Application_Form_SmartBlockCriteria extends Zend_Form_SubForm
         if ($data['etc']['sp_limit_options'] == 'hours') {
             $multiplier = 60;
         }
-        if ($data['etc']['sp_limit_options'] == 'hours' || $data['etc']['sp_limit_options'] == 'mins') {
+        if ($data['etc']['sp_limit_options'] == 'hours' || $data['etc']['sp_limit_options'] == 'minutes') {
             $element = $this->getElement('sp_limit_value');
             if ($data['etc']['sp_limit_value'] == '' || floatval($data['etc']['sp_limit_value']) <= 0) {
                 $element->addError(_('Limit cannot be empty or smaller than 0'));

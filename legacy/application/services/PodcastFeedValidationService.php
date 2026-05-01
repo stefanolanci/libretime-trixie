@@ -67,22 +67,22 @@ class Application_Service_PodcastFeedValidationService
         $artDecoded = Application_Model_Preference::getPodcastAppleArtworkDecoded();
         $hasDedicated = $artDecoded !== '';
         if (!$hasDedicated) {
-            $warnings[] = _('No dedicated podcast artwork uploaded: the feed falls back to the station logo until you add square JPG/PNG artwork (1400–3000 px).');
+            $warnings[] = _('No dedicated podcast artwork uploaded: Apple Podcasts Connect requires 3000 x 3000 px JPG/PNG artwork in RGB/sRGB.');
         } else {
             $info = @getimagesizefromstring($artDecoded);
             if ($info === false) {
                 $warnings[] = _('Dedicated artwork could not be read as an image.');
             } else {
                 [$w, $h] = $info;
-                if ($w !== $h) {
-                    $warnings[] = _('Podcast artwork should be square.');
-                }
-                if ($w < 1400 || $w > 3000) {
-                    $warnings[] = sprintf(_('Apple recommends artwork width between 1400 and 3000 px (got %dx%d).'), (int) $w, (int) $h);
+                if ($w !== 3000 || $h !== 3000) {
+                    $warnings[] = sprintf(_('Apple Podcasts Connect requires artwork to be exactly 3000 x 3000 px (got %dx%d).'), (int) $w, (int) $h);
                 }
                 $itype = isset($info[2]) ? (int) $info[2] : 0;
                 if (!in_array($itype, [IMAGETYPE_JPEG, IMAGETYPE_PNG], true)) {
                     $warnings[] = _('Dedicated artwork must be JPG or PNG.');
+                }
+                if (self::pngHasAlphaChannel($artDecoded)) {
+                    $warnings[] = _('PNG artwork has an alpha channel (RGBA). Apple Podcasts Connect asks for RGB/sRGB artwork; use JPG or a PNG without alpha if validation fails.');
                 }
             }
         }
@@ -124,5 +124,15 @@ class Application_Service_PodcastFeedValidationService
         }
 
         return ['errors' => $errors, 'warnings' => array_values(array_unique($warnings))];
+    }
+
+    private static function pngHasAlphaChannel($raw)
+    {
+        if (substr($raw, 0, 8) !== "\x89PNG\r\n\x1a\n") {
+            return false;
+        }
+        $colorType = ord(substr($raw, 25, 1));
+
+        return in_array($colorType, [4, 6], true);
     }
 }

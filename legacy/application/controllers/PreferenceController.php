@@ -152,6 +152,15 @@ class PreferenceController extends Zend_Controller_Action
             return;
         }
 
+        if (!empty($_FILES['artwork']['error'])) {
+            $this->_helper->json->sendJson([
+                'valid' => false,
+                'error' => $this->podcastArtworkUploadErrorMessage((int) $_FILES['artwork']['error']),
+            ]);
+
+            return;
+        }
+
         if (empty($_FILES['artwork']['tmp_name'])) {
             $this->_helper->json->sendJson([
                 'valid' => false,
@@ -161,7 +170,15 @@ class PreferenceController extends Zend_Controller_Action
             return;
         }
 
-        Application_Model_Preference::setPodcastAppleArtworkFromFile($_FILES['artwork']['tmp_name']);
+        $uploadResult = Application_Model_Preference::setPodcastAppleArtworkFromFile($_FILES['artwork']['tmp_name']);
+        if (empty($uploadResult['valid'])) {
+            $this->_helper->json->sendJson([
+                'valid' => false,
+                'error' => $uploadResult['error'] ?? _('Podcast artwork upload failed.'),
+            ]);
+
+            return;
+        }
 
         try {
             $payload = Application_Service_PodcastService::getPartialStationPodcastAppleUiPayload();
@@ -211,6 +228,21 @@ class PreferenceController extends Zend_Controller_Action
                 'valid' => false,
                 'error' => _('Could not refresh podcast metadata.'),
             ]);
+        }
+    }
+
+    private function podcastArtworkUploadErrorMessage($code)
+    {
+        switch ($code) {
+            case UPLOAD_ERR_INI_SIZE:
+            case UPLOAD_ERR_FORM_SIZE:
+                return _('Podcast artwork exceeds the server upload size limit.');
+            case UPLOAD_ERR_PARTIAL:
+                return _('Podcast artwork upload was interrupted. Please try again.');
+            case UPLOAD_ERR_NO_FILE:
+                return _('No file uploaded.');
+            default:
+                return _('Podcast artwork upload failed.');
         }
     }
 

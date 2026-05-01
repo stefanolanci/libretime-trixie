@@ -312,6 +312,7 @@ class LibraryController extends Zend_Controller_Action
             $row->setDbModifier($c->getDbModifier());
             $row->setDbValue($c->getDbValue());
             $row->setDbExtra($c->getDbExtra());
+            $row->setDbCriteriaGroup($c->getDbCriteriaGroup());
             $row->setDbBlockId($newBl->getId());
             $row->save();
         }

@@ -1620,7 +1620,7 @@ class Application_Model_Preference
         self::setValue('station_podcast_privacy', $value);
     }
 
-    public const PODCAST_APPLE_MAX_ARTWORK_BYTES = 6291456;
+    public const PODCAST_APPLE_MAX_ARTWORK_BYTES = 31457280;
 
     public static function getPodcastAppleOwnerName()
     {
@@ -1713,18 +1713,27 @@ class Application_Model_Preference
     {
         if ($imagePath === '' || $imagePath === null) {
             self::clearPodcastAppleArtwork();
-            return;
+            return ['valid' => true];
         }
         $raw = @file_get_contents($imagePath);
         if ($raw === false || $raw === '') {
             Logging::warn('Could not read podcast Apple artwork file: ' . (string) $imagePath);
 
-            return;
+            return [
+                'valid' => false,
+                'error' => _('Could not read uploaded podcast artwork.'),
+            ];
         }
         if (strlen($raw) > self::PODCAST_APPLE_MAX_ARTWORK_BYTES) {
             Logging::warn('Podcast Apple artwork exceeds size limit');
 
-            return;
+            return [
+                'valid' => false,
+                'error' => sprintf(
+                    _('Podcast artwork is too large. Maximum size is %d MB.'),
+                    (int) (self::PODCAST_APPLE_MAX_ARTWORK_BYTES / 1048576)
+                ),
+            ];
         }
         $f = finfo_open();
         $mime = finfo_buffer($f, $raw, FILEINFO_MIME_TYPE);
@@ -1732,11 +1741,24 @@ class Application_Model_Preference
         if (!in_array($mime, ['image/jpeg', 'image/png'], true)) {
             Logging::warn('Podcast Apple artwork MIME not allowed: ' . $mime);
 
-            return;
+            return [
+                'valid' => false,
+                'error' => _('Podcast artwork must be a JPG or PNG image.'),
+            ];
+        }
+        if (@getimagesizefromstring($raw) === false) {
+            Logging::warn('Podcast Apple artwork is not a readable image');
+
+            return [
+                'valid' => false,
+                'error' => _('Podcast artwork could not be read as an image.'),
+            ];
         }
 
         self::setValue('podcast_apple_artwork_base64', base64_encode($raw));
         self::setValue('podcast_apple_artwork_mime', $mime);
+
+        return ['valid' => true];
     }
 
     public static function clearPodcastAppleArtwork()

@@ -135,7 +135,7 @@
                             <label><?php echo _("Podcast artwork") ?></label>
                             <div class="artwork-upload">
                                 <p class="apple-art-guidance">
-                                    <?php echo _("Square JPG or PNG (RGB/sRGB recommended), typically 1400–3000 px per side.") ?>
+                                    <?php echo _("Apple Podcasts Connect requires podcast artwork to be exactly 3000 x 3000 px, JPG or PNG, RGB/sRGB (no alpha channel), and served from a public URL that accepts HTTP HEAD requests.") ?>
                                     <span class="muted"><?php echo _("Hosted at"); ?> <code>{{ podcast.artwork_public_url }}</code></span>
                                 </p>
                                 <div class="img-preview-row" ng-show="podcast.artwork_public_url">
@@ -143,6 +143,12 @@
                                         ng-class="{ 'fallback-artwork': !podcast.has_dedicated_podcast_artwork }" />
                                 </div>
                                 <input id="podcast-apple-artwork-input" accept="image/jpeg,image/png" type="file" />
+                                <button type="button" class="btn" id="podcast-apple-artwork-choose">
+                                    <?php echo _("Upload / replace artwork"); ?>
+                                </button>
+                                <span class="artwork-status" ng-show="podcast.has_dedicated_podcast_artwork">
+                                    <?php echo _("Dedicated artwork loaded."); ?>
+                                </span>
                                 <button type="button" class="btn" id="podcast-apple-artwork-remove">
                                     <?php echo _("Remove uploaded artwork"); ?>
                                 </button>
