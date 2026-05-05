@@ -4,7 +4,7 @@ Minimal passive pipeline monitor.
 Runs in its own daemon thread.  Reads three signals that are already
 available (no telnet, no HTTP to Liquidsoap/Icecast):
 
-  AUD   – StreamLevelProbeThread.last_mean_volume vs −45 dB (in-memory read)
+  AUD   – StreamLevelProbeThread audio state from a 5s RMS/peak sample
   FET   – boolean flag set by PypoFetch            (in-memory read)
   PLAY  – file written by Liquidsoap notify()      (fast local read)
 
@@ -42,6 +42,9 @@ class PipelineMonitor(Thread):
         self,
         legacy_client: LegacyClient,
         probe_volume_getter: Optional[Callable[[], Optional[float]]] = None,
+        probe_peak_getter: Optional[Callable[[], Optional[float]]] = None,
+        probe_audio_state_getter: Optional[Callable[[], Optional[str]]] = None,
+        probe_audio_comment_getter: Optional[Callable[[], Optional[str]]] = None,
         probe_link_getter: Optional[Callable[[], Optional[bool]]] = None,
         probe_flow_getter: Optional[Callable[[], Optional[bool]]] = None,
         icecast_status_url: str = "http://127.0.0.1:8000/status-json.xsl",
@@ -51,6 +54,9 @@ class PipelineMonitor(Thread):
         super().__init__()
         self._legacy_client = legacy_client
         self._probe_volume_getter = probe_volume_getter
+        self._probe_peak_getter = probe_peak_getter
+        self._probe_audio_state_getter = probe_audio_state_getter
+        self._probe_audio_comment_getter = probe_audio_comment_getter
         self._probe_link_getter = probe_link_getter
         self._probe_flow_getter = probe_flow_getter
         self._icecast_status_url = icecast_status_url
@@ -71,16 +77,27 @@ class PipelineMonitor(Thread):
         ingest_connected = self._read_icecast_ingest_status()
 
         ice_audio: Optional[bool] = None
+        audio_mean_db: Optional[float] = None
+        audio_peak_db: Optional[float] = None
+        audio_level_state: Optional[str] = None
+        audio_level_comment: Optional[str] = None
         link_up: Optional[bool] = None
         flow_up: Optional[bool] = None
         if self._probe_volume_getter is not None:
             vol = self._probe_volume_getter()
             if vol is not None:
-                ice_audio = vol > -45.0
+                audio_mean_db = vol
+                ice_audio = vol >= -68.0
             elif ingest_connected is True:
                 # Probe could not sample (e.g. mount reconnect); do not force AUD off
                 # while Icecast still shows an active source on the configured mount.
                 ice_audio = True
+        if self._probe_peak_getter is not None:
+            audio_peak_db = self._probe_peak_getter()
+        if self._probe_audio_state_getter is not None:
+            audio_level_state = self._probe_audio_state_getter()
+        if self._probe_audio_comment_getter is not None:
+            audio_level_comment = self._probe_audio_comment_getter()
         if self._probe_link_getter is not None:
             link_up = self._probe_link_getter()
         if self._probe_flow_getter is not None:
@@ -97,6 +114,10 @@ class PipelineMonitor(Thread):
         state = {
             "pipeline": {
                 "ice_audio": ice_audio,
+                "audio_mean_db": audio_mean_db,
+                "audio_peak_db": audio_peak_db,
+                "audio_level_state": audio_level_state,
+                "audio_level_comment": audio_level_comment,
                 "link_up": link_up,
                 "flow_up": flow_up,
                 "ingest_connected": ingest_connected,

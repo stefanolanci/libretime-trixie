@@ -608,6 +608,18 @@ function updatePlcPanel() {
   var flowUp = p.flow_up === true;
   var audUp = p.ice_audio === true;
   var ingestUp = p.ingest_connected === true;
+  var audioLevelState = p.audio_level_state || null;
+  var audioLevelComment = p.audio_level_comment || null;
+  var audioLevelTitle =
+    audioLevelComment ||
+    (p.ice_audio === true ? $.i18n._("Audio on air") : $.i18n._("Audio below threshold"));
+  if (typeof p.audio_mean_db === "number") {
+    audioLevelTitle += " (RMS " + p.audio_mean_db.toFixed(1) + " dB";
+    if (typeof p.audio_peak_db === "number") {
+      audioLevelTitle += ", peak " + p.audio_peak_db.toFixed(1) + " dB";
+    }
+    audioLevelTitle += ")";
+  }
 
   if (isStale) {
     setLamp(lampLink, "off", $.i18n._("Stale data"));
@@ -641,9 +653,9 @@ function updatePlcPanel() {
   }
 
   if (p.ice_audio === true) {
-    setLamp(lampAud, "green", $.i18n._("Audio on air"));
+    setLamp(lampAud, "green", audioLevelTitle || $.i18n._("Audio on air"));
   } else if (p.ice_audio === false) {
-    setLamp(lampAud, "red", $.i18n._("Audio below threshold"));
+    setLamp(lampAud, "red", audioLevelTitle);
   } else {
     setLamp(lampAud, "off", $.i18n._("Waiting for probe"));
   }
@@ -684,7 +696,13 @@ function updatePlcPanel() {
 
   var anomalies = [];
   if (hasNowPlaying && p.ice_audio === false) {
-    anomalies.push($.i18n._("PLAY=1 but AUD=0"));
+    if (audioLevelState === "critical") {
+      anomalies.push($.i18n._("AUDIO CRITICAL: near-silence"));
+    } else if (audioLevelState === "low") {
+      anomalies.push($.i18n._("AUDIO LOW: amplitude below threshold"));
+    } else {
+      anomalies.push($.i18n._("PLAY=1 but AUD=0"));
+    }
   }
   if (flowUp && !linkUp) {
     anomalies.push($.i18n._("FLW=1 but LNK=0"));

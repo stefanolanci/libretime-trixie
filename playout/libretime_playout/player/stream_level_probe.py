@@ -20,12 +20,21 @@ import time
 
 logger = logging.getLogger(__name__)
 
+SAMPLE_SECONDS = "5"
+LOW_MEAN_DBFS = -68.0
+CRITICAL_MEAN_DBFS = -82.0
+CRITICAL_PEAK_DBFS = -65.0
+HARD_CRITICAL_MEAN_DBFS = -88.0
+
 
 class StreamLevelProbeThread(threading.Thread):
     daemon = True
     name = "stream_level_probe"
 
     last_mean_volume: float | None = None
+    last_peak_volume: float | None = None
+    last_audio_level_state: str | None = None
+    last_audio_level_comment: str | None = None
     last_link_up: bool | None = None
     last_flowing: bool | None = None
 
@@ -56,7 +65,7 @@ class StreamLevelProbeThread(threading.Thread):
             "-loglevel",
             "info",
             "-t",
-            "3",
+            SAMPLE_SECONDS,
             "-i",
             self._url,
             "-af",
@@ -90,22 +99,42 @@ class StreamLevelProbeThread(threading.Thread):
                 # Hold last good telemetry for PLC during short Icecast / mux glitches.
                 return
             self.last_mean_volume = None
+            self.last_peak_volume = None
+            self.last_audio_level_state = None
+            self.last_audio_level_comment = "Audio probe unavailable"
             self.last_link_up = proc.returncode == 0
             self.last_flowing = False
             return
         mean_v = float(mean_m.group(1))
+        max_v = float(max_m.group(1))
         self.last_mean_volume = mean_v
+        self.last_peak_volume = max_v
         self.last_link_up = True
         self.last_flowing = True
         self._last_good_mono = time.monotonic()
-        if mean_v < -45.0:
+        if mean_v < HARD_CRITICAL_MEAN_DBFS or (
+            mean_v < CRITICAL_MEAN_DBFS and max_v < CRITICAL_PEAK_DBFS
+        ):
+            self.last_audio_level_state = "critical"
+            self.last_audio_level_comment = "Near-silence detected on program output"
             logger.warning(
-                "stream level probe: very low audio mean=%s dB max=%s dB url=%s",
+                "stream level probe: audio critical mean=%s dB max=%s dB url=%s",
+                mean_m.group(1),
+                max_m.group(1),
+                self._url,
+            )
+        elif mean_v < LOW_MEAN_DBFS:
+            self.last_audio_level_state = "low"
+            self.last_audio_level_comment = "Audio amplitude very low"
+            logger.warning(
+                "stream level probe: audio low mean=%s dB max=%s dB url=%s",
                 mean_m.group(1),
                 max_m.group(1),
                 self._url,
             )
         else:
+            self.last_audio_level_state = "ok"
+            self.last_audio_level_comment = "Audio on air"
             logger.info(
                 "stream level probe: mean=%s dB max=%s dB",
                 mean_m.group(1),

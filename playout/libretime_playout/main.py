@@ -161,6 +161,15 @@ def cli(
         probe_volume_getter=(
             (lambda: probe_thread.last_mean_volume) if probe_thread else None
         ),
+        probe_peak_getter=(
+            (lambda: probe_thread.last_peak_volume) if probe_thread else None
+        ),
+        probe_audio_state_getter=(
+            (lambda: probe_thread.last_audio_level_state) if probe_thread else None
+        ),
+        probe_audio_comment_getter=(
+            (lambda: probe_thread.last_audio_level_comment) if probe_thread else None
+        ),
         probe_link_getter=((lambda: probe_thread.last_link_up) if probe_thread else None),
         probe_flow_getter=((lambda: probe_thread.last_flowing) if probe_thread else None),
         icecast_status_url=icecast_status_url,
