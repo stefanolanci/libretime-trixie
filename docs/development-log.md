@@ -12,15 +12,15 @@ Update this file when you ship meaningful fork changes so downstream users can f
 
 This repository is the **libretime-trixie** distribution: LibreTime packaged and tested for **Debian 13 (Trixie)**. Upstream lineage: [LibreTime](https://github.com/libretime/libretime) (AGPL-3.0). This fork’s **release identity** is independent of upstream’s setuptools labels.
 
-**Semantic version (one triple):** **Major.Minor.Patch** (e.g. `0.1.16`). The same triple appears in **`VERSION`**, **`setup.py`**, and the **Git tag** before `-trixie`.
+**Semantic version (one triple):** **Major.Minor.Patch** (e.g. `0.2.0`). The same triple appears in **`VERSION`**, **`setup.py`**, and the **Git tag** before `-trixie`.
 
 | Layer | Format | Example |
 |--------|--------|---------|
-| **Git tag (this repo)** | `Major.Minor.Patch-trixie` (**no** leading `v` on the tag ref) | **`0.1.16-trixie`** |
-| **Root `VERSION`** | `Major.Minor.Patch` + space + `trixie` | **`0.1.16 trixie`** |
-| **Python `setup.py`** | `version="Major.Minor.Patch"` | **`0.1.16`** |
+| **Git tag (this repo)** | `Major.Minor.Patch-trixie` (**no** leading `v` on the tag ref) | **`0.2.0-trixie`** |
+| **Root `VERSION`** | `Major.Minor.Patch` + space + `trixie` | **`0.2.0 trixie`** |
+| **Python `setup.py`** | `version="Major.Minor.Patch"` | **`0.2.0`** |
 
-User-facing history for this fork is maintained **here** (no separate root changelog). [GitHub Releases](https://github.com/stefanolanci/libretime-trixie/releases) may use a readable title such as **v0.1.16-trixie** while the **tag ref** remains **`M.m.p-trixie`**. One triple ⇒ one annotated tag and one release per bump.
+User-facing history for this fork is maintained **here** (no separate root changelog). [GitHub Releases](https://github.com/stefanolanci/libretime-trixie/releases) may use a readable title such as **v0.2.0-trixie** while the **tag ref** remains **`M.m.p-trixie`**. One triple ⇒ one annotated tag and one release per bump.
 
 ### Release checklist
 
@@ -31,8 +31,8 @@ User-facing history for this fork is maintained **here** (no separate root chang
 ### Check out a known release
 
 ```bash
-git fetch origin tag 0.1.16-trixie
-git checkout 0.1.16-trixie   # detached HEAD; fine for installs
+git fetch origin tag 0.2.0-trixie
+git checkout 0.2.0-trixie   # detached HEAD; fine for installs
 # or stay on main after a release merge:
 git checkout main && git pull
 ```
@@ -40,6 +40,16 @@ git checkout main && git pull
 ---
 
 ## Changelog (newest first)
+
+### 2026-05-05 — **v0.2.0-trixie** (minor)
+
+- Bumped fork semver to **0.2.0** in **`VERSION`** and all component **`setup.py`** files.
+- **Apple Podcasts feed validation:** station feeds now expose refreshed Apple metadata consistently enough for external validators, including stable artwork URLs and cache validators for RSS/artwork refreshes.
+- **Podcast artwork refresh:** dedicated podcast artwork changes now update the public feed state reliably so Apple Podcasts and validators can pick up replacements without stale metadata.
+- **Episode Apple defaults:** station podcast episodes continue to emit Apple-compatible defaults, including `itunes:season` for mono-season feeds, while per-episode season/episode editing remains a future database-backed enhancement.
+- **Git tag ref:** **`0.2.0-trixie`**. Release titles may use **v0.2.0-trixie**.
+
+---
 
 ### 2026-05-01 — **v0.1.16-trixie** (patch)
 
