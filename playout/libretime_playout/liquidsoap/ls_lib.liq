@@ -16,6 +16,52 @@ def notify_queue(m)
   m
 end
 
+def track_fade_envelope(~id, s)
+  fade_in = ref(0.)
+  fade_out = ref(0.)
+
+  def clamp_fade(v) =
+    if v < 0. then 0.
+    elsif v > 30. then 30.
+    else v end
+  end
+
+  def read_fade(m, key, current) =
+    if m[key] == "" then 0.
+    else clamp_fade(float_of_string(default=current, m[key])) end
+  end
+
+  def update_fades(m) =
+    fade_in := read_fade(m, "liq_fade_in", fade_in())
+    fade_out := read_fade(m, "liq_fade_out", fade_out())
+    log("track_fade_envelope #{id}: fade_in=#{fade_in()}s fade_out=#{fade_out()}s")
+    m
+  end
+
+  s = metadata.map(update_fades, s)
+
+  def gain() =
+    elapsed = source.elapsed(s)
+    remaining = source.remaining(s)
+
+    in_gain =
+      if fade_in() <= 0. then 1.
+      elsif elapsed <= 0. then 0.
+      elsif elapsed >= fade_in() then 1.
+      else elapsed / fade_in() end
+
+    out_gain =
+      if fade_out() <= 0. then 1.
+      elsif remaining <= 0. then 1.
+      elsif remaining >= fade_out() then 1.
+      else remaining / fade_out() end
+
+    if in_gain < out_gain then in_gain else out_gain end
+  end
+
+  amplify(id=id, override=null(), gain, s)
+end
+
 def notify_stream(m)
   if web_stream_id() != "-1" then
     # LS 2.3: json.stringify replaces the deprecated json_of.

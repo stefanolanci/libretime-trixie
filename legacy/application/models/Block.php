@@ -1295,7 +1295,7 @@ SQL;
         }
     }
 
-    public function getListOfFilesUnderLimit($show = null, $showStartTime = null)
+    public function getListOfFilesUnderLimit($show = null, $showStartTime = null, bool $startsAfterPreviousTrack = false)
     {
         $info = $this->getListofFilesMeetCriteria($show, $showStartTime);
         $files = $info['files'];
@@ -1305,6 +1305,7 @@ SQL;
         $isRandomSort = $info['sort_type'] == 'random';
         $blockTime = $limit['time'];
         $blockItems = $limit['items'];
+        $crossfadeDuration = self::getEffectiveCrossfadeDuration();
 
         if ($files->isEmpty()) {
             return [];
@@ -1335,30 +1336,67 @@ SQL;
         $insertList = [];
         $totalTime = 0;
         if ($isRandomSort && !$overflow && $blockItems === null) {
-            $minTrackLength = min(array_map(fn (Track $item) => $item->length, $tracks));
-            do {
-                $solution = SSPSolution::solve($tracks, $blockTime - $totalTime);
+            while (true) {
+                $remainingTime = $blockTime - $totalTime;
+                if ($remainingTime <= 0) {
+                    break;
+                }
+
+                $solution = SSPSolution::solve(
+                    $tracks,
+                    $remainingTime,
+                    50,
+                    $crossfadeDuration,
+                    $startsAfterPreviousTrack || count($insertList) > 0
+                );
+                if ($solution->sum <= 0.0 || count($solution->tracks) === 0) {
+                    break;
+                }
+
                 $insertList = array_merge($insertList, $solution->tracks);
                 $totalTime += $solution->sum;
-            } while ($repeat && ($blockTime - $totalTime) > $minTrackLength);
+
+                if (!$repeat) {
+                    break;
+                }
+
+                $minContribution = self::minEffectiveTrackContribution(
+                    $tracks,
+                    $crossfadeDuration,
+                    $startsAfterPreviousTrack || count($insertList) > 0
+                );
+                if ($minContribution === null || ($blockTime - $totalTime) <= $minContribution) {
+                    break;
+                }
+            }
             shuffle($insertList);
         } else {
             $isFull = function () use (&$blockItems, &$insertList, &$totalTime, &$blockTime) {
-                return $blockItems !== null && count($insertList) >= $blockItems || $totalTime > $blockTime;
+                return $blockItems !== null && count($insertList) >= $blockItems || $totalTime >= $blockTime;
             };
 
-            $addTrack = function (Track $track) use ($overflow, $blockTime, &$insertList, &$totalTime) {
+            $addTrack = function (Track $track) use ($overflow, $blockTime, $crossfadeDuration, $startsAfterPreviousTrack, &$insertList, &$totalTime) {
+                $contribution = self::effectiveTrackContribution(
+                    $track,
+                    $crossfadeDuration,
+                    $startsAfterPreviousTrack || count($insertList) > 0
+                );
                 if ($overflow) {
                     $insertList[] = $track;
-                    $totalTime += $track->length;
-                } else {
-                    $projectedTime = $totalTime + $track->length;
+                    $totalTime += $contribution;
 
-                    if ($projectedTime <= $blockTime) {
-                        $insertList[] = $track;
-                        $totalTime += $track->length;
-                    }
+                    return $contribution;
                 }
+
+                $projectedTime = $totalTime + $contribution;
+                if ($projectedTime <= $blockTime) {
+                    $insertList[] = $track;
+                    $totalTime = $projectedTime;
+
+                    return $contribution;
+                }
+
+                return null;
             };
 
             foreach ($tracks as $track) {
@@ -1376,11 +1414,47 @@ SQL;
                 Logging::debug('total time = ' . $totalTime);
                 $track = $insertList[array_rand(array_slice($insertList, 0, $sizeOfInsert))];
 
-                $addTrack($track);
+                $contribution = $addTrack($track);
+                if ($contribution === null || ($blockItems === null && $contribution <= 0.0)) {
+                    break;
+                }
             }
         }
 
         return array_map(fn (Track $track) => ['id' => $track->id, 'length' => $track->length], $insertList);
+    }
+
+    private static function getEffectiveCrossfadeDuration(): float
+    {
+        return max(0.0, (float) Application_Model_Preference::GetDefaultCrossfadeDuration());
+    }
+
+    private static function effectiveTrackContribution(Track $track, float $crossfade, bool $hasPreviousTrack): float
+    {
+        if (!$hasPreviousTrack || $crossfade <= 0.0) {
+            return max(0.0, $track->length);
+        }
+
+        return max(0.0, $track->length - $crossfade);
+    }
+
+    /**
+     * @param Track[] $tracks
+     */
+    private static function minEffectiveTrackContribution(array $tracks, float $crossfade, bool $hasPreviousTrack): ?float
+    {
+        $min = null;
+        foreach ($tracks as $track) {
+            $contribution = self::effectiveTrackContribution($track, $crossfade, $hasPreviousTrack);
+            if ($contribution <= 0.0) {
+                continue;
+            }
+            if ($min === null || $contribution < $min) {
+                $min = $contribution;
+            }
+        }
+
+        return $min;
     }
 
     /**
@@ -1767,14 +1841,23 @@ class SSPSolution
 
     public float $sum = 0.0;
 
-    public function __construct($tracks = [], $sum = null)
+    private float $crossfade;
+
+    private bool $startsAfterPreviousTrack;
+
+    public function __construct($tracks = [], $sum = null, float $crossfade = 0.0, bool $startsAfterPreviousTrack = false)
     {
         $this->tracks = $tracks;
+        $this->crossfade = max(0.0, $crossfade);
+        $this->startsAfterPreviousTrack = $startsAfterPreviousTrack;
         if ($sum !== null) {
             $this->sum = $sum;
         } else {
-            foreach ($this->tracks as $track) {
-                $this->sum += $track->length;
+            foreach ($this->tracks as $index => $track) {
+                $this->sum += $this->effectiveTrackContribution(
+                    $track,
+                    $this->startsAfterPreviousTrack || $index > 0
+                );
             }
         }
     }
@@ -1784,12 +1867,51 @@ class SSPSolution
         $new = $this->tracks;
         $new[] = $track;
 
-        return new SSPSolution($new, $this->sum + $track->length);
+        return new SSPSolution(
+            $new,
+            $this->sum + $this->effectiveTrackContribution(
+                $track,
+                $this->startsAfterPreviousTrack || count($this->tracks) > 0
+            ),
+            $this->crossfade,
+            $this->startsAfterPreviousTrack
+        );
     }
 
-    public function replace(Track $old, Track $new): SSPSolution
+    public function replace(Track $old, Track $new, $sum = null): SSPSolution
     {
-        return new SSPSolution(array_map(fn (Track $it) => $it === $old ? $new : $it, $this->tracks));
+        return new SSPSolution(
+            array_map(fn (Track $it) => $it === $old ? $new : $it, $this->tracks),
+            $sum,
+            $this->crossfade,
+            $this->startsAfterPreviousTrack
+        );
+    }
+
+    public function replacementSum(Track $old, Track $new): ?float
+    {
+        foreach ($this->tracks as $index => $track) {
+            if ($track !== $old) {
+                continue;
+            }
+
+            $hasPreviousTrack = $this->startsAfterPreviousTrack || $index > 0;
+
+            return $this->sum
+                - $this->effectiveTrackContribution($old, $hasPreviousTrack)
+                + $this->effectiveTrackContribution($new, $hasPreviousTrack);
+        }
+
+        return null;
+    }
+
+    private function effectiveTrackContribution(Track $track, bool $hasPreviousTrack): float
+    {
+        if (!$hasPreviousTrack || $this->crossfade <= 0.0) {
+            return max(0.0, $track->length);
+        }
+
+        return max(0.0, $track->length - $this->crossfade);
     }
 
     public static function isCloseEnough(float $delta): bool
@@ -1816,9 +1938,15 @@ class SSPSolution
     /**
      * @param Track[] $tracks
      */
-    public static function solve(array $tracks, float $target, int $trials = 50): SSPSolution
+    public static function solve(
+        array $tracks,
+        float $target,
+        int $trials = 50,
+        float $crossfade = 0.0,
+        bool $startsAfterPreviousTrack = false
+    ): SSPSolution
     {
-        $best = new SSPSolution();
+        $best = new SSPSolution([], null, $crossfade, $startsAfterPreviousTrack);
         for ($trial = 0; $trial < $trials; ++$trial) {
             shuffle($tracks);
             $initial = array_reduce($tracks, function (SSPSolution $solution, Track $track) use ($target) {
@@ -1828,7 +1956,7 @@ class SSPSolution
                 }
 
                 return $solution;
-            }, new SSPSolution());
+            }, new SSPSolution([], null, $crossfade, $startsAfterPreviousTrack));
 
             if (count($initial->tracks) == count($tracks)) {
                 return $initial;
@@ -1842,19 +1970,24 @@ class SSPSolution
                     return $solution;
                 }
 
-                $replacement = self::maxByOrNull(
-                    array_filter(
-                        array_diff($tracks, $solution->tracks),
-                        fn (Track $it) => $it->length > $track->length && $it->length - $track->length <= $delta,
-                    ),
-                    fn (Track $it) => $it->length,
-                );
+                $bestReplacement = null;
+                $bestReplacementSum = null;
+                foreach (array_diff($tracks, $solution->tracks) as $candidate) {
+                    $candidateSum = $solution->replacementSum($track, $candidate);
+                    if ($candidateSum === null || $candidateSum > $target || $candidateSum <= $solution->sum) {
+                        continue;
+                    }
+                    if ($bestReplacementSum === null || $candidateSum > $bestReplacementSum) {
+                        $bestReplacement = $candidate;
+                        $bestReplacementSum = $candidateSum;
+                    }
+                }
 
-                if ($replacement === null) {
+                if ($bestReplacement === null) {
                     return $solution;
                 }
 
-                return $solution->replace($track, $replacement);
+                return $solution->replace($track, $bestReplacement, $bestReplacementSum);
             }, $initial);
 
             if ($localImprovement->sum > $best->sum) {

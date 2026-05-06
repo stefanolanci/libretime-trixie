@@ -287,7 +287,7 @@ final class Application_Model_Scheduler
                     } else {
                         $defaultFadeIn = Application_Model_Preference::GetDefaultFadeIn();
                         $defaultFadeOut = Application_Model_Preference::GetDefaultFadeOut();
-                        $dynamicFiles = $bl->getListOfFilesUnderLimit($showLimit, $showStart);
+                        $dynamicFiles = $bl->getListOfFilesUnderLimit($showLimit, $showStart, count($files) > 0);
                         foreach ($dynamicFiles as $f) {
                             $fileId = $f['id'];
                             $file = CcFilesQuery::create()->findPk($fileId);
@@ -1280,11 +1280,16 @@ final class Application_Model_Scheduler
 
                     // Delete the same track, represented by $removedItem, in
                     // each linked show instance.
-                    $itemsToDelete = CcScheduleQuery::create()
+                    $linkedItemsToDelete = CcScheduleQuery::create()
                         ->filterByDbPosition($removedItem->getDbPosition())
                         ->filterByDbInstanceId($instanceIds, Criteria::IN)
                         ->filterByDbId($removedItem->getDbId(), Criteria::NOT_EQUAL)
-                        ->delete($this->con);
+                        ->find($this->con);
+
+                    foreach ($linkedItemsToDelete as $linkedItemToDelete) {
+                        $scheduledIds[] = $linkedItemToDelete->getDbId();
+                        $linkedItemToDelete->delete($this->con);
+                    }
                 }
 
                 // check to truncate the currently playing item instead of deleting it.
@@ -1336,7 +1341,7 @@ final class Application_Model_Scheduler
 
             $this->con->commit();
 
-            Application_Model_RabbitMq::PushSchedule('remove_items');
+            Application_Model_RabbitMq::PushSchedule('remove_items', $scheduledIds);
         } catch (Exception $e) {
             $this->con->rollback();
 
@@ -1347,11 +1352,19 @@ final class Application_Model_Scheduler
     // This is used to determine the duration of a files array
     public function timeLengthOfFiles($files)
     {
-        return array_reduce(
-            $files,
-            fn ($acc, $file) => $acc + Application_Common_DateHelper::playlistTimeToSeconds($file['cliplength']),
-            0.0
-        );
+        $crossfadeDuration = max(0.0, (float) Application_Model_Preference::GetDefaultCrossfadeDuration());
+        $total = 0.0;
+        $hasPreviousFile = false;
+        foreach ($files as $file) {
+            $length = Application_Common_DateHelper::playlistTimeToSeconds($file['cliplength']);
+            if ($hasPreviousFile && $crossfadeDuration > 0.0) {
+                $length = max(0.0, $length - $crossfadeDuration);
+            }
+            $total += $length;
+            $hasPreviousFile = true;
+        }
+
+        return $total;
     }
 
     /*

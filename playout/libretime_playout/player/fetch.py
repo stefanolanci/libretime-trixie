@@ -7,7 +7,7 @@ from pathlib import Path
 from queue import Empty, Queue
 from subprocess import DEVNULL, PIPE, run
 from threading import Thread, Timer
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, Optional, Set, Tuple, Union
 
 from libretime_api_client.v1 import ApiClient as LegacyClient
 from libretime_api_client.v2 import ApiClient
@@ -66,6 +66,35 @@ class PypoFetch(Thread):
         self.schedule_data: Events = {}
         logger.info("PypoFetch: init complete")
 
+    @staticmethod
+    def _extract_schedule_ids(value: Any) -> Set[int]:
+        if value is None:
+            return set()
+        if isinstance(value, dict):
+            values: Iterable[Any] = value.values()
+        elif isinstance(value, (list, tuple, set)):
+            values = value
+        else:
+            values = (value,)
+
+        schedule_ids: Set[int] = set()
+        for raw in values:
+            try:
+                schedule_ids.add(int(raw))
+            except (TypeError, ValueError):
+                logger.warning("Ignoring invalid affected schedule id: %r", raw)
+        return schedule_ids
+
+    @staticmethod
+    def _without_schedule_ids(events: Events, removed_ids: Set[int]) -> Events:
+        if not removed_ids:
+            return events
+        return {
+            key: event
+            for key, event in events.items()
+            if getattr(event, "row_id", None) not in removed_ids
+        }
+
     def apply_liquidsoap_stream_switches(self, state: StreamState) -> None:
         """
         Align Liquidsoap harbor/schedule refs with API state.
@@ -115,16 +144,44 @@ class PypoFetch(Thread):
 
             if command == "update_schedule":
                 action = message.get("action")
+                removed_schedule_ids = (
+                    self._extract_schedule_ids(message.get("affected_schedule_ids"))
+                    if action == "remove_items"
+                    else set()
+                )
                 if action == "remove_items":
+                    if removed_schedule_ids:
+                        logger.info(
+                            "remove_items tombstones received: %s",
+                            sorted(removed_schedule_ids),
+                        )
+                        self.schedule_data = self._without_schedule_ids(
+                            self.schedule_data,
+                            removed_schedule_ids,
+                        )
+                        self.process_schedule(
+                            self.schedule_data,
+                            schedule_action=action,
+                            fast_path=True,
+                            cleanup_cache=False,
+                            sync_streams=False,
+                        )
+
                     fast_started = time.monotonic()
                     fast_schedule = get_schedule(
                         self.api_client,
                         lookahead=timedelta(hours=1),
                     )
+                    fast_schedule = self._without_schedule_ids(
+                        fast_schedule,
+                        removed_schedule_ids,
+                    )
                     logger.info(
-                        "remove_items fast schedule fetched in %.3fs (%d events)",
+                        "remove_items fast schedule fetched in %.3fs (%d events, "
+                        "removed tombstones=%d)",
                         time.monotonic() - fast_started,
                         len(fast_schedule),
+                        len(removed_schedule_ids),
                     )
                     self.process_schedule(
                         fast_schedule,
@@ -136,11 +193,17 @@ class PypoFetch(Thread):
 
                 full_started = time.monotonic()
                 self.schedule_data = get_schedule(self.api_client)
+                self.schedule_data = self._without_schedule_ids(
+                    self.schedule_data,
+                    removed_schedule_ids,
+                )
                 logger.info(
-                    "update_schedule full schedule fetched in %.3fs (%d events, action=%s)",
+                    "update_schedule full schedule fetched in %.3fs "
+                    "(%d events, action=%s, removed tombstones=%d)",
                     time.monotonic() - full_started,
                     len(self.schedule_data),
                     action,
+                    len(removed_schedule_ids),
                 )
                 if self._plm is not None:
                     self._plm.has_schedule = bool(self.schedule_data)

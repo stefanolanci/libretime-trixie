@@ -36,10 +36,9 @@ def create_source()
     # when disabled, libretime_replay_gain is absent and amplify uses 1.0.
     l = amplify(1., override="libretime_replay_gain", l)
 
-    # LS 2.3 applies liq_cue_in / liq_cue_out / liq_fade_in / liq_fade_out
-    # natively during request resolution - no explicit cue_cut or fade
-    # operators needed.  The playout annotation sends the values configured
-    # in the UI (per-track cue points, fade durations).
+    # Cue points are handled by request resolution; fade metadata shapes the
+    # per-track audio envelope before scheduled queue overlap creates the crossfade.
+    l = track_fade_envelope(id="queue_fade_#{this_source_id}", l)
 
     l = metadata.map(notify_queue, l)
     l = cross_http(http_input_id="http", l)
