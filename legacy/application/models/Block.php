@@ -928,7 +928,7 @@ SQL;
             $result = Application_Common_Database::prepareAndExecute($sql, $params, 'column');
             if ($result) {
                 $fadeOut = $cliplength;
-                $row->setDbFadein($fadeOut);
+                $row->setDbFadeout($fadeOut);
             }
 
             $row->save($this->con);

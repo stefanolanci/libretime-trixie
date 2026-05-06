@@ -170,7 +170,13 @@ class CcShowInstances extends BaseCcShowInstances
      */
     public function computeDbTimeFilled(PropelPDO $con)
     {
-        $stmt = $con->prepare('SELECT SUM(clip_length) FROM "cc_schedule" WHERE cc_schedule.INSTANCE_ID = :p1');
+        $sql = <<<'SQL'
+SELECT MAX(cc_schedule.ends) - MIN(cc_schedule.starts)
+FROM "cc_schedule"
+WHERE cc_schedule.INSTANCE_ID = :p1
+SQL;
+
+        $stmt = $con->prepare($sql);
         $stmt->bindValue(':p1', $this->getDbId());
         $stmt->execute();
 

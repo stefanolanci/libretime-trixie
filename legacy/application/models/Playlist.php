@@ -900,7 +900,7 @@ SQL;
             $sql = 'SELECT :fadeOut::INTERVAL > :cliplength::INTERVAL';
             if (Application_Common_Database::prepareAndExecute($sql, [':fadeOut' => $fadeOut, ':cliplength' => $cliplength], 'column')) {
                 $fadeOut = $cliplength;
-                $row->setDbFadein($fadeOut);
+                $row->setDbFadeout($fadeOut);
             }
 
             $row->save($this->con);

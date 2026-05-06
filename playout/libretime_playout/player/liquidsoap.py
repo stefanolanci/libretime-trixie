@@ -17,9 +17,27 @@ _NOW_PLAYING_PATH = Path("/var/lib/libretime/playout/.now_playing_sid")
 _MAX_LIQ_FADE_SEC = 30.0
 
 
+def file_event_annotation_signature(file_event: FileEvent) -> tuple:
+    return (
+        file_event.start,
+        file_event.end,
+        file_event.row_id,
+        file_event.id,
+        file_event.uri,
+        file_event.fade_in,
+        file_event.fade_out,
+        file_event.cue_in,
+        file_event.cue_out,
+        file_event.replay_gain,
+        file_event.track_title,
+        file_event.artist_name,
+    )
+
+
 def create_liquidsoap_annotation(file_event: FileEvent) -> str:
-    # We need liq_start_next value in the annotation. That is the value that controls
-    # overlap duration of crossfade.
+    # Keep Liquidsoap's request annotation neutral: schedule starts/ends already
+    # encode the crossfade overlap, and per-track fades are handled explicitly
+    # in the Liquidsoap envelope.
     fade_in_s = max(0.0, min(file_event.fade_in / 1000.0, _MAX_LIQ_FADE_SEC))
     fade_out_s = max(0.0, min(file_event.fade_out / 1000.0, _MAX_LIQ_FADE_SEC))
     if fade_in_s != file_event.fade_in / 1000.0 or fade_out_s != file_event.fade_out / 1000.0:
@@ -290,11 +308,7 @@ class Liquidsoap:
             if item.row_id in row_id_map:
                 queue_item = row_id_map[item.row_id]
 
-                if not (
-                    queue_item.start == item.start
-                    and queue_item.end == item.end
-                    and queue_item.row_id == item.row_id
-                ):
+                if file_event_annotation_signature(queue_item) != file_event_annotation_signature(item):
                     # need to re-add
                     logger.info("Track %s found to have new attr.", item)
                     to_be_removed.add(item.row_id)

@@ -63,7 +63,7 @@ def track_fade_envelope(~id, s)
 end
 
 def notify_stream(m)
-  if web_stream_id() != "-1" then
+  if web_stream_enabled() and web_stream_id() != "-1" then
     # LS 2.3: json.stringify replaces the deprecated json_of.
     json_str = string.replace(pattern="\n",(fun (s) -> ""), json.stringify(m))
     json_str = string.replace(pattern="'",(fun (s) -> "'\''"), json_str)

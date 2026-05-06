@@ -214,21 +214,6 @@ class Application_Service_SchedulerService
         // copied into to all the new show instances.
         $linkedShowSchedule = self::getLinkedShowSchedule($ccShow->getDbId(), $instanceIdsToFill, $instanceId);
 
-        // get time_filled so we can update cc_show_instances
-        if (!empty($linkedShowSchedule)) {
-            $timeFilled_sql = 'SELECT time_filled FROM cc_show_instances '
-                . "WHERE id = {$linkedShowSchedule[0]['instance_id']}";
-            $timeFilled = Application_Common_Database::prepareAndExecute(
-                $timeFilled_sql,
-                [],
-                Application_Common_Database::COLUMN
-            );
-        } else {
-            // We probably shouldn't return here because the code below will
-            // set this on each empty show instance...
-            $timeFilled = '00:00:00';
-        }
-
         $values = [];
 
         $con = Propel::getConnection();
@@ -307,13 +292,12 @@ class Application_Service_SchedulerService
                 } // foreach linked instance
             }
 
-            // update time_filled and last_scheduled in cc_show_instances
+            // update last_scheduled in cc_show_instances
             $now = gmdate(DEFAULT_TIMESTAMP_FORMAT);
             $whereClause = new Criteria();
             $whereClause->add(CcShowInstancesPeer::ID, $instanceIdsToFill, Criteria::IN);
 
             $updateClause = new Criteria();
-            $updateClause->add(CcShowInstancesPeer::TIME_FILLED, $timeFilled);
             $updateClause->add(CcShowInstancesPeer::LAST_SCHEDULED, $now);
 
             BasePeer::doUpdate($whereClause, $updateClause, $con);
@@ -330,8 +314,7 @@ class Application_Service_SchedulerService
 
     public static function fillPreservedLinkedShowContent($ccShow, $showStamp)
     {
-        $item = $showStamp->getFirst();
-        $timeFilled = $item->getCcShowInstances()->getDbTimeFilled();
+        $con = Propel::getConnection(CcShowInstancesPeer::DATABASE_NAME);
 
         foreach ($ccShow->getCcShowInstancess() as $ccShowInstance) {
             $ccSchedules = CcScheduleQuery::create()
@@ -365,10 +348,7 @@ class Application_Service_SchedulerService
                     );
                 } // foreach show item
 
-                $ccShowInstance
-                    ->setDbTimeFilled($timeFilled)
-                    ->setDbLastScheduled(gmdate(DEFAULT_TIMESTAMP_FORMAT))
-                    ->save();
+                $ccShowInstance->updateScheduleStatus($con);
             }
         }
     }

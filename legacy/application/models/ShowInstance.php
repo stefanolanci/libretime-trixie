@@ -563,14 +563,18 @@ SQL;
 
     public static function getIsFull($p_start, $p_end)
     {
+        $crossfadeDuration = max(0.0, (float) Application_Model_Preference::GetDefaultCrossfadeDuration());
+        $fullSlack = Application_Common_DateHelper::secondsToPlaylistTime($crossfadeDuration);
+
         $sql = <<<'SQL'
-SELECT id, ends-starts-'00:00:05' < time_filled as filled
+SELECT id, ends - starts - :full_slack::INTERVAL <= time_filled AS filled
 from cc_show_instances
 WHERE ends > :p_start::TIMESTAMP
 AND starts < :p_end::TIMESTAMP
 SQL;
 
         $res = Application_Common_Database::prepareAndExecute($sql, [
+            ':full_slack' => $fullSlack,
             ':p_start' => $p_start->format('Y-m-d G:i:s'),
             ':p_end' => $p_end->format('Y-m-d G:i:s'),
         ], 'all');

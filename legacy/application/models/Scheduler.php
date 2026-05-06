@@ -1022,7 +1022,6 @@ final class Application_Model_Scheduler
                         // recalculate the start/end times after the inserted items.
                         foreach ($followingSchedItems as $item) {
                             $endTimeDT = $this->findEndTime($nextStartDT, $item['clip_length']);
-                            $endTimeDT = $this->findTimeDifference($endTimeDT, $this->crossfadeDuration);
                             $update_sql = 'UPDATE cc_schedule SET '
                                 . "starts = '{$nextStartDT->format(DEFAULT_MICROTIME_FORMAT)}', "
                                 . "ends = '{$endTimeDT->format(DEFAULT_MICROTIME_FORMAT)}', "
