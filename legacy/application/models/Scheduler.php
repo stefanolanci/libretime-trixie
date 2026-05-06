@@ -214,7 +214,7 @@ final class Application_Model_Scheduler
      *
      * @return $files
      */
-    private function retrieveMediaFiles($id, $type, $show)
+    private function retrieveMediaFiles($id, $type, $show, $startsAfterPreviousTrack = false)
     {
         // if there is a show we need to set a show limit to pass to smart blocks in case they use time remaining
         $showInstance = new Application_Model_ShowInstance($show);
@@ -254,7 +254,7 @@ final class Application_Model_Scheduler
             foreach ($contents as $plItem) {
                 if ($plItem['type'] == 0) {
                     $data['id'] = $plItem['item_id'];
-                    $data['cliplength'] = $plItem['length'];
+                    $data['cliplength'] = $plItem['raw_length'] ?? $plItem['length'];
                     $data['cuein'] = $plItem['cuein'];
                     $data['cueout'] = $plItem['cueout'];
                     $data['fadein'] = $plItem['fadein'];
@@ -263,7 +263,7 @@ final class Application_Model_Scheduler
                     $files[] = $data;
                 } elseif ($plItem['type'] == 1) {
                     $data['id'] = $plItem['item_id'];
-                    $data['cliplength'] = $plItem['length'];
+                    $data['cliplength'] = $plItem['raw_length'] ?? $plItem['length'];
                     $data['cuein'] = $plItem['cuein'];
                     $data['cueout'] = $plItem['cueout'];
                     $data['fadein'] = '00.500000'; // $plItem['fadein'];
@@ -276,7 +276,7 @@ final class Application_Model_Scheduler
                     if ($bl->isStatic()) {
                         foreach ($bl->getContents() as $track) {
                             $data['id'] = $track['item_id'];
-                            $data['cliplength'] = $track['length'];
+                            $data['cliplength'] = $track['raw_length'] ?? $track['length'];
                             $data['cuein'] = $track['cuein'];
                             $data['cueout'] = $track['cueout'];
                             $data['fadein'] = $track['fadein'];
@@ -287,7 +287,11 @@ final class Application_Model_Scheduler
                     } else {
                         $defaultFadeIn = Application_Model_Preference::GetDefaultFadeIn();
                         $defaultFadeOut = Application_Model_Preference::GetDefaultFadeOut();
-                        $dynamicFiles = $bl->getListOfFilesUnderLimit($showLimit, $showStart, count($files) > 0);
+                        $dynamicFiles = $bl->getListOfFilesUnderLimit(
+                            $showLimit,
+                            $showStart,
+                            $startsAfterPreviousTrack || count($files) > 0
+                        );
                         foreach ($dynamicFiles as $f) {
                             $fileId = $f['id'];
                             $file = CcFilesQuery::create()->findPk($fileId);
@@ -312,7 +316,7 @@ final class Application_Model_Scheduler
                 }
                 // if this is a playlist it might contain multiple time remaining smart blocks
                 // since the schedule isn't updated until after this insert we need to keep tally
-                $showLimit = $originalShowLimit - $this->timeLengthOfFiles($files);
+                $showLimit = $originalShowLimit - $this->timeLengthOfFiles($files, $startsAfterPreviousTrack);
             }
         } elseif ($type == 'stream') {
             // need to return
@@ -337,7 +341,7 @@ final class Application_Model_Scheduler
             if ($bl->isStatic()) {
                 foreach ($bl->getContents() as $track) {
                     $data['id'] = $track['item_id'];
-                    $data['cliplength'] = $track['length'];
+                    $data['cliplength'] = $track['raw_length'] ?? $track['length'];
                     $data['cuein'] = $track['cuein'];
                     $data['cueout'] = $track['cueout'];
                     $data['fadein'] = $track['fadein'];
@@ -348,7 +352,7 @@ final class Application_Model_Scheduler
             } else {
                 $defaultFadeIn = Application_Model_Preference::GetDefaultFadeIn();
                 $defaultFadeOut = Application_Model_Preference::GetDefaultFadeOut();
-                $dynamicFiles = $bl->getListOfFilesUnderLimit($showLimit, $showStart);
+                $dynamicFiles = $bl->getListOfFilesUnderLimit($showLimit, $showStart, $startsAfterPreviousTrack);
                 foreach ($dynamicFiles as $f) {
                     $fileId = $f['id'];
                     $file = CcFilesQuery::create()->findPk($fileId);
@@ -501,13 +505,18 @@ final class Application_Model_Scheduler
         $now = new DateTime('now', new DateTimeZone('UTC'));
         $itemStartDT = $instance->getDbStarts(null);
         foreach ($schedule as $item) {
-            $itemEndDT = $this->findEndTime($itemStartDT, $item->getDbClipLength());
-            // If the track has already ended, don't change it.
-            if ($itemEndDT < $now) {
-                $itemStartDT = $itemEndDT;
+            $storedStartDT = $item->getDbStarts(null);
+            $storedEndDT = $item->getDbEnds(null);
+
+            // Keep rows that already started anchored to what playout saw. They still
+            // determine the overlap start for the next editable/future row.
+            if ($storedStartDT < $now) {
+                $itemStartDT = $this->findTimeDifference($storedEndDT, $this->crossfadeDuration);
 
                 continue;
             }
+
+            $itemEndDT = $this->findEndTime($itemStartDT, $item->getDbClipLength());
             $item->setDbStarts($itemStartDT)
                 ->setDbEnds($itemEndDT)
                 ->save($this->con);
@@ -830,7 +839,12 @@ final class Application_Model_Scheduler
                         foreach ($mediaItems as $media) {
                             $filesToInsert = array_merge(
                                 $filesToInsert,
-                                $this->retrieveMediaFiles($media['id'], $media['type'], $schedule['instance'])
+                                $this->retrieveMediaFiles(
+                                    $media['id'],
+                                    $media['type'],
+                                    $schedule['instance'],
+                                    $this->applyCrossfades || count($filesToInsert) > 0
+                                )
                             );
                         }
                     }
@@ -1349,11 +1363,11 @@ final class Application_Model_Scheduler
     }
 
     // This is used to determine the duration of a files array
-    public function timeLengthOfFiles($files)
+    public function timeLengthOfFiles($files, $startsAfterPreviousTrack = false)
     {
         $crossfadeDuration = max(0.0, (float) Application_Model_Preference::GetDefaultCrossfadeDuration());
         $total = 0.0;
-        $hasPreviousFile = false;
+        $hasPreviousFile = $startsAfterPreviousTrack;
         foreach ($files as $file) {
             $length = Application_Common_DateHelper::playlistTimeToSeconds($file['cliplength']);
             if ($hasPreviousFile && $crossfadeDuration > 0.0) {

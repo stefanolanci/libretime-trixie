@@ -86,10 +86,34 @@ class CcPlaylist extends BaseCcPlaylist
     public function computeDbLength(PropelPDO $con)
     {
         $sql = <<<'SQL'
-        SELECT SUM(cliplength) FROM cc_playlistcontents as pc
-        LEFT JOIN cc_files as f ON pc.file_id = f.id
-        WHERE PLAYLIST_ID = :p1
-        AND (f.file_exists is NUll or f.file_exists = true)
+WITH pref AS (
+    SELECT COALESCE(NULLIF(valstr, ''), '0')::DOUBLE PRECISION AS crossfade_seconds
+    FROM cc_pref
+    WHERE keystr = 'default_crossfade_duration'
+), rows AS (
+    SELECT pc.cliplength::INTERVAL AS cliplength,
+           pc.trackoffset AS trackoffset,
+           row_number() OVER (ORDER BY pc.position, pc.id) AS rn,
+           COALESCE((SELECT crossfade_seconds FROM pref LIMIT 1), 0) AS crossfade_seconds
+    FROM cc_playlistcontents AS pc
+    LEFT JOIN cc_files AS f ON pc.file_id = f.id
+    WHERE pc.playlist_id = :p1
+      AND (f.file_exists IS NULL OR f.file_exists = TRUE)
+      AND pc.cliplength IS NOT NULL
+)
+SELECT SUM(
+    GREATEST(
+        cliplength - make_interval(
+            secs => CASE
+                WHEN rn = 1 THEN 0
+                WHEN trackoffset IS NOT NULL AND trackoffset > 0 THEN trackoffset
+                ELSE crossfade_seconds
+            END
+        ),
+        INTERVAL '0 seconds'
+    )
+)
+FROM rows
 SQL;
         $stmt = $con->prepare($sql);
         $stmt->bindValue(':p1', $this->getDbId());

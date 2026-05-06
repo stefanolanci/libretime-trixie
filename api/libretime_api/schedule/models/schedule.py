@@ -89,7 +89,10 @@ class Schedule(models.Model):
             self.starts_at < self.instance.ends_at
             and self.instance.ends_at < self.ends_at
         ):
-            return self.instance.ends_at - self.starts_at
+            return min(
+                self.cue_out,
+                self.cue_in + (self.instance.ends_at - self.starts_at),
+            )
         return self.cue_out
 
     def get_ends_at(self):

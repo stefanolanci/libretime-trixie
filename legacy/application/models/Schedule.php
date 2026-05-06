@@ -1013,16 +1013,22 @@ SQL;
             $trackStartDateTime = new DateTime($item['start'], $utcTimeZone);
             $trackEndDateTime = new DateTime($item['end'], $utcTimeZone);
 
-            if ($trackStartDateTime->getTimestamp() > $showEndDateTime->getTimestamp()) {
+            if ((float) $trackStartDateTime->format('U.u') >= (float) $showEndDateTime->format('U.u')) {
                 // do not send any tracks that start past their show's end time
                 continue;
             }
 
-            if ($trackEndDateTime->getTimestamp() > $showEndDateTime->getTimestamp()) {
-                $di = $trackStartDateTime->diff($showEndDateTime);
-
-                $item['cue_out'] = $di->format('%H:%i:%s') . '.000';
-                $item['end'] = $showEndDateTime->format(DEFAULT_TIMESTAMP_FORMAT);
+            if ((float) $trackEndDateTime->format('U.u') > (float) $showEndDateTime->format('U.u')) {
+                $durationSeconds = max(
+                    0,
+                    (float) $showEndDateTime->format('U.u') - (float) $trackStartDateTime->format('U.u')
+                );
+                $cueInSeconds = Application_Common_DateHelper::playlistTimeToSeconds($item['cue_in']);
+                $storedCueOutSeconds = Application_Common_DateHelper::playlistTimeToSeconds($item['cue_out']);
+                $item['cue_out'] = Application_Common_DateHelper::secondsToPlaylistTime(
+                    min($storedCueOutSeconds, $cueInSeconds + $durationSeconds)
+                );
+                $item['end'] = $showEndDateTime->format(DEFAULT_MICROTIME_FORMAT);
             }
 
             if (!is_null($item['file_id'])) {

@@ -11,6 +11,10 @@ class ScheduleFilter(filters.FilterSet):
     starts = filters.DateTimeFromToRangeFilter(field_name="starts_at")
     ends = filters.DateTimeFromToRangeFilter(field_name="ends_at")
     position_status = filters.NumberFilter()
+    position_status__gt = filters.NumberFilter(
+        field_name="position_status",
+        lookup_expr="gt",
+    )
     broadcasted = filters.NumberFilter()
 
     overbooked = filters.BooleanFilter(method="overbooked_filter")

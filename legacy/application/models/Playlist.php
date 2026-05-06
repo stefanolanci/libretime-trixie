@@ -239,19 +239,28 @@ SQL;
         $rows = Application_Common_Database::prepareAndExecute($sql, $params);
 
         $offset = 0;
+        $hasPreviousRow = false;
+        $defaultCrossfadeDuration = max(0.0, (float) Application_Model_Preference::GetDefaultCrossfadeDuration());
         foreach ($rows as &$row) {
             // Logging::info($row);
 
+            $row['raw_length'] = $row['length'];
             $clipSec = Application_Common_DateHelper::playlistTimeToSeconds($row['length']);
             $row['trackSec'] = $clipSec;
 
             $row['cueInSec'] = Application_Common_DateHelper::playlistTimeToSeconds($row['cuein']);
             $row['cueOutSec'] = Application_Common_DateHelper::playlistTimeToSeconds($row['cueout']);
 
-            $trackoffset = $row['trackoffset'];
+            $trackoffset = 0.0;
+            if ($hasPreviousRow) {
+                $trackoffset = ((float) $row['trackoffset'] > 0.0)
+                    ? (float) $row['trackoffset']
+                    : $defaultCrossfadeDuration;
+            }
             $offset += $clipSec;
             $offset -= $trackoffset;
             $offset_cliplength = Application_Common_DateHelper::secondsToPlaylistTime($offset);
+            $hasPreviousRow = true;
 
             // format the length for UI.
             if ($row['type'] == 2) {
@@ -732,7 +741,6 @@ SQL;
 
                 if (!is_null($offset)) {
                     $row->setDbTrackOffset($offset);
-                    $row->save($this->con);
                 }
             }
             if (!is_null($fadeOut)) {
@@ -743,6 +751,7 @@ SQL;
                 }
                 $row->setDbFadeout($fadeOut);
             }
+            $row->save($this->con);
             $this->pl->setDbMtime(new DateTime('now', new DateTimeZone('UTC')));
             $this->pl->save($this->con);
 

@@ -86,10 +86,34 @@ class CcBlock extends BaseCcBlock
     public function computeDbLength(PropelPDO $con)
     {
         $sql = <<<'SQL'
-        SELECT SUM(cliplength) FROM cc_blockcontents as bc
-        JOIN cc_files as f ON bc.file_id = f.id
-        WHERE BLOCK_ID = :b1
-        AND f.file_exists = true
+WITH pref AS (
+    SELECT COALESCE(NULLIF(valstr, ''), '0')::DOUBLE PRECISION AS crossfade_seconds
+    FROM cc_pref
+    WHERE keystr = 'default_crossfade_duration'
+), rows AS (
+    SELECT bc.cliplength::INTERVAL AS cliplength,
+           bc.trackoffset AS trackoffset,
+           row_number() OVER (ORDER BY bc.position, bc.id) AS rn,
+           COALESCE((SELECT crossfade_seconds FROM pref LIMIT 1), 0) AS crossfade_seconds
+    FROM cc_blockcontents AS bc
+    JOIN cc_files AS f ON bc.file_id = f.id
+    WHERE bc.block_id = :b1
+      AND f.file_exists = TRUE
+      AND bc.cliplength IS NOT NULL
+)
+SELECT SUM(
+    GREATEST(
+        cliplength - make_interval(
+            secs => CASE
+                WHEN rn = 1 THEN 0
+                WHEN trackoffset IS NOT NULL AND trackoffset > 0 THEN trackoffset
+                ELSE crossfade_seconds
+            END
+        ),
+        INTERVAL '0 seconds'
+    )
+)
+FROM rows
 SQL;
         $stmt = $con->prepare($sql);
         $stmt->bindValue(':b1', $this->getDbId());

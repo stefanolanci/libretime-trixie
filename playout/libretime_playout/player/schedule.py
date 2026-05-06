@@ -3,8 +3,6 @@ from operator import itemgetter
 from typing import Dict, Set
 
 from libretime_api_client.v2 import ApiClient
-from libretime_shared.datetime import time_in_milliseconds, time_in_seconds
-
 from ..liquidsoap.models import StreamPreferences
 from .events import (
     ActionEvent,
@@ -16,6 +14,57 @@ from .events import (
     datetime_to_event_key,
     event_isoparse,
 )
+
+
+def _duration_seconds(value) -> float:
+    if value is None:
+        return 0.0
+    if isinstance(value, timedelta):
+        return value.total_seconds()
+    if isinstance(value, time):
+        return (
+            value.hour * 60 * 60
+            + value.minute * 60
+            + value.second
+            + value.microsecond / 1000000.0
+        )
+    if isinstance(value, (int, float)):
+        return float(value)
+
+    raw = str(value).strip()
+    if not raw:
+        return 0.0
+
+    sign = -1.0 if raw.startswith("-") else 1.0
+    if raw[0] in "+-":
+        raw = raw[1:]
+
+    days = 0
+    if " " in raw:
+        day_part, raw = raw.split(" ", 1)
+        days = int(day_part)
+
+    parts = raw.split(":")
+    if len(parts) == 3:
+        hours, minutes, seconds = parts
+    elif len(parts) == 2:
+        hours = "0"
+        minutes, seconds = parts
+    else:
+        hours = "0"
+        minutes = "0"
+        seconds = parts[0]
+
+    return sign * (
+        days * 86400
+        + int(hours) * 3600
+        + int(minutes) * 60
+        + float(seconds)
+    )
+
+
+def _time_milliseconds(value) -> float:
+    return _duration_seconds(value) * 1000.0
 
 
 def insert_event(events: Events, event_key: str, event: AnyEvent) -> None:
@@ -155,10 +204,10 @@ def generate_file_events(
         # Show data
         show_name=show["name"],
         # Extra data
-        fade_in=time_in_milliseconds(time.fromisoformat(schedule["fade_in"])),
-        fade_out=time_in_milliseconds(time.fromisoformat(schedule["fade_out"])),
-        cue_in=time_in_seconds(time.fromisoformat(schedule["cue_in"])),
-        cue_out=time_in_seconds(time.fromisoformat(schedule["cue_out"])),
+        fade_in=_time_milliseconds(schedule.get("fade_in")),
+        fade_out=_time_milliseconds(schedule.get("fade_out")),
+        cue_in=_duration_seconds(schedule["cue_in"]),
+        cue_out=_duration_seconds(schedule["cue_out"]),
         # File data
         track_title=file.get("track_title"),
         artist_name=file.get("artist_name"),

@@ -1,6 +1,6 @@
 import logging
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
@@ -49,13 +49,22 @@ def create_liquidsoap_annotation(file_event: FileEvent) -> str:
             file_event.fade_out / 1000.0,
             fade_out_s,
         )
+    cue_in = file_event.cue_in
+    lateness = seconds_between(
+        file_event.start,
+        datetime.now(timezone.utc).replace(tzinfo=None),
+    )
+    if lateness > 0:
+        cue_in = min(file_event.cue_out, cue_in + lateness)
+        logger.debug("media item was supposed to start %ss ago", lateness)
+
     annotations = {
         "media_id": file_event.id,
         "schedule_table_id": file_event.row_id,
         "liq_start_next": "0",
         "liq_fade_in": fade_in_s,
         "liq_fade_out": fade_out_s,
-        "liq_cue_in": file_event.cue_in,
+        "liq_cue_in": cue_in,
         "liq_cue_out": file_event.cue_out,
     }
 
@@ -352,7 +361,6 @@ class Liquidsoap:
 
             for item in scheduled_now_files:
                 if item.row_id in to_be_added:
-                    self.modify_cue_point(item)
                     self.play(item)
 
         # handle webstreams
@@ -376,16 +384,6 @@ class Liquidsoap:
     def clear_queue_tracker(self) -> None:
         for queue_id in self.liq_queue_tracker:
             self.liq_queue_tracker[queue_id] = None
-
-    def modify_cue_point(self, file_event: FileEvent) -> None:
-        assert file_event.type == EventKind.FILE
-
-        lateness = seconds_between(file_event.start, datetime.now(timezone.utc).replace(tzinfo=None))
-
-        if lateness > 0:
-            logger.debug("media item was supposed to start %ss ago", lateness)
-            cue_in_orig = timedelta(seconds=file_event.cue_in)
-            file_event.cue_in = cue_in_orig.total_seconds() + lateness
 
     def clear_all_queues(self) -> None:
         self.telnet_liquidsoap.queue_clear_all()

@@ -198,7 +198,10 @@ SQL;
         $rows = Application_Common_Database::prepareAndExecute($sql, $params);
 
         $offset = 0;
+        $hasPreviousRow = false;
+        $defaultCrossfadeDuration = max(0.0, (float) Application_Model_Preference::GetDefaultCrossfadeDuration());
         foreach ($rows as &$row) {
+            $row['raw_length'] = $row['length'];
             $clipSec = Application_Common_DateHelper::playlistTimeToSeconds($row['length']);
 
             $row['trackSec'] = $clipSec;
@@ -206,10 +209,16 @@ SQL;
             $row['cueInSec'] = Application_Common_DateHelper::playlistTimeToSeconds($row['cuein']);
             $row['cueOutSec'] = Application_Common_DateHelper::playlistTimeToSeconds($row['cueout']);
 
-            $trackoffset = $row['trackoffset'];
+            $trackoffset = 0.0;
+            if ($hasPreviousRow) {
+                $trackoffset = ((float) $row['trackoffset'] > 0.0)
+                    ? (float) $row['trackoffset']
+                    : $defaultCrossfadeDuration;
+            }
             $offset += $clipSec;
             $offset -= $trackoffset;
             $offset_cliplength = Application_Common_DateHelper::secondsToPlaylistTime($offset);
+            $hasPreviousRow = true;
 
             // format the length for UI.
             $formatter = new LengthFormatter($row['length']);
@@ -339,19 +348,15 @@ SQL;
         }
     }
 
-    // this function returns sum of all track length under this block.
+    // This returns the same crossfade-aware static length persisted on cc_block.length.
     public function getStaticLength()
     {
-        $sql = <<<'SQL'
-SELECT SUM(cliplength) AS LENGTH
-FROM cc_blockcontents as bc
-JOIN cc_files as f ON bc.file_id = f.id
-WHERE block_id = :block_id
-AND f.file_exists = true
-SQL;
-        $result = Application_Common_Database::prepareAndExecute($sql, [':block_id' => $this->id], 'all', PDO::FETCH_NUM);
+        $block = CcBlockQuery::create()->findPk($this->id, $this->con);
+        if (is_null($block)) {
+            return null;
+        }
 
-        return $result[0][0];
+        return $block->computeDbLength($this->con);
     }
 
     private function insertBlockElement($info)
