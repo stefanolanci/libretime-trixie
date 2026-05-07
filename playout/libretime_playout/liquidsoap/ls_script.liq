@@ -101,12 +101,25 @@ server.register(namespace="web_stream",
                 fun (s) -> begin log("web_stream.get_id") web_stream_get_id() end)
 
 default = amplify(id="silence_src", 0.00001, noise())
+default = insert_metadata(default)
+offline_metadata_callback = default.insert_metadata
+
+def clean_message_offline() =
+  string.replace(pattern="\\\"", (fun (s) -> ""), message_offline())
+end
 
 def map_message_offline(m) =
-  [("title", message_offline())]
+  [("title", clean_message_offline())]
 end
 
 default = metadata.map(id="map_metadata:offline", map_message_offline, default)
+
+def push_message_offline_metadata() =
+  ignore(offline_metadata_callback([("title", clean_message_offline())]))
+end
+
+ignore(push_message_offline_metadata())
+ignore(thread.run.recurrent(delay=15., { push_message_offline_metadata(); 15. }))
 ignore(output.dummy(default, fallible=true))
 
 input_main_streaming = ref (false)
@@ -162,7 +175,12 @@ s = switch(id="switch:blank+schedule",
             # Web streams are routed inside `queue` (http_fallback). Keep this branch while
             # schedule is on, output is enabled, web_stream_armed (set_id prebuffer), or non-idle
             # web_stream_id; otherwise a file->web handoff can briefly select `default` (offline).
-            [({schedule_streaming() or web_stream_enabled() or web_stream_armed() or web_stream_id() != "-1"}, queue), ({true}, default)]
+            #
+            # A future-only schedule should not suppress the offline metadata source.
+            # Keep the schedule branch only when it can actually produce audio (or while
+            # a web stream handoff is armed); otherwise fall back to `default`, whose
+            # metadata is the configured "Off Air Metadata" value.
+            [({(schedule_streaming() and source.is_ready(queue)) or web_stream_enabled() or web_stream_armed() or web_stream_id() != "-1"}, queue), ({true}, default)]
     )
 
 s = if input_show_port != 0 and input_show_mount != "" then
@@ -241,3 +259,8 @@ server.register(namespace="sources",
     usage="start_schedule",
     "start_schedule",
     fun (s) -> begin log("sources.start_schedule") start_schedule() "Done" end)
+server.register(namespace="metadata",
+    description="Refresh offline metadata.",
+    usage="refresh_offline",
+    "refresh_offline",
+    fun (s) -> begin log("metadata.refresh_offline") push_message_offline_metadata() "Done" end)

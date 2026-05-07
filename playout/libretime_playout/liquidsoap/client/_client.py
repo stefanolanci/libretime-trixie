@@ -299,5 +299,7 @@ class LiquidsoapClient:
                 self._set_var("message_format", self._quote(message_format))
             if message_offline is not None:
                 self._set_var("message_offline", self._quote(message_offline))
+                self.conn.write("metadata.refresh_offline")
+                self.conn.read()
             if input_fade_transition is not None:
                 self._set_var("input_fade_transition", input_fade_transition)
