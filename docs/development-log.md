@@ -12,15 +12,15 @@ Update this file when you ship meaningful fork changes so downstream users can f
 
 This repository is the **libretime-trixie** distribution: LibreTime packaged and tested for **Debian 13 (Trixie)**. Upstream lineage: [LibreTime](https://github.com/libretime/libretime) (AGPL-3.0). This fork’s **release identity** is independent of upstream’s setuptools labels.
 
-**Semantic version (one triple):** **Major.Minor.Patch** (e.g. `0.2.1`). The same triple appears in **`VERSION`**, **`setup.py`**, and the **Git tag** before `-trixie`.
+**Semantic version (one triple):** **Major.Minor.Patch** (e.g. `0.2.2`). The same triple appears in **`VERSION`**, **`setup.py`**, and the **Git tag** before `-trixie`.
 
 | Layer | Format | Example |
 |--------|--------|---------|
-| **Git tag (this repo)** | `Major.Minor.Patch-trixie` (**no** leading `v` on the tag ref) | **`0.2.1-trixie`** |
-| **Root `VERSION`** | `Major.Minor.Patch` + space + `trixie` | **`0.2.1 trixie`** |
-| **Python `setup.py`** | `version="Major.Minor.Patch"` | **`0.2.1`** |
+| **Git tag (this repo)** | `Major.Minor.Patch-trixie` (**no** leading `v` on the tag ref) | **`0.2.2-trixie`** |
+| **Root `VERSION`** | `Major.Minor.Patch` + space + `trixie` | **`0.2.2 trixie`** |
+| **Python `setup.py`** | `version="Major.Minor.Patch"` | **`0.2.2`** |
 
-User-facing history for this fork is maintained **here** (no separate root changelog). [GitHub Releases](https://github.com/stefanolanci/libretime-trixie/releases) may use a readable title such as **v0.2.1-trixie** while the **tag ref** remains **`M.m.p-trixie`**. One triple ⇒ one annotated tag and one release per bump.
+User-facing history for this fork is maintained **here** (no separate root changelog). [GitHub Releases](https://github.com/stefanolanci/libretime-trixie/releases) may use a readable title such as **v0.2.2-trixie** while the **tag ref** remains **`M.m.p-trixie`**. One triple ⇒ one annotated tag and one release per bump.
 
 ### Release checklist
 
@@ -31,8 +31,8 @@ User-facing history for this fork is maintained **here** (no separate root chang
 ### Check out a known release
 
 ```bash
-git fetch origin tag 0.2.1-trixie
-git checkout 0.2.1-trixie   # detached HEAD; fine for installs
+git fetch origin tag 0.2.2-trixie
+git checkout 0.2.2-trixie   # detached HEAD; fine for installs
 # or stay on main after a release merge:
 git checkout main && git pull
 ```
@@ -40,6 +40,15 @@ git checkout main && git pull
 ---
 
 ## Changelog (newest first)
+
+### 2026-05-10 — **v0.2.2-trixie** (patch)
+
+- Bumped fork semver to **0.2.2** in **`VERSION`** and all component **`setup.py`** files.
+- **Calendar fill indicators:** 24-hour shows whose filled time is reported as PostgreSQL day intervals now render as fully populated when their schedules cover the whole show.
+- **Show Builder scheduling:** moving tracks within a running show preserves crossfade overlap while recalculating the remaining schedule, avoiding false multi-minute overbooking after reorder operations.
+- **Git tag ref:** **`0.2.2-trixie`**. Release titles may use **v0.2.2-trixie**.
+
+---
 
 ### 2026-05-07 — **v0.2.1-trixie** (patch)
 
