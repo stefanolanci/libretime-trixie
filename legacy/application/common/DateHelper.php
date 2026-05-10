@@ -418,15 +418,33 @@ class Application_Common_DateHelper
      */
     public static function playlistTimeToSeconds($plt)
     {
-        $arr = preg_split('/:/', $plt);
-        if (isset($arr[2])) {
-            return (intval($arr[0]) * 60 + intval($arr[1])) * 60 + floatval($arr[2]);
-        }
-        if (isset($arr[1])) {
-            return intval($arr[0]) * 60 + floatval($arr[1]);
+        $plt = trim((string) $plt);
+        if ($plt === '') {
+            return 0.0;
         }
 
-        return floatval($arr[0]);
+        $sign = 1;
+        if ($plt[0] === '-' || $plt[0] === '+') {
+            $sign = ($plt[0] === '-') ? -1 : 1;
+            $plt = trim(substr($plt, 1));
+        }
+
+        $days = 0.0;
+        if (preg_match('/^(\d+(?:\.\d+)?)\s+days?\b(?:\s+(.*))?$/i', $plt, $matches)) {
+            $days = (float) $matches[1];
+            $plt = isset($matches[2]) && $matches[2] !== '' ? trim($matches[2]) : '00:00:00';
+        }
+
+        $arr = preg_split('/:/', $plt);
+        if (isset($arr[2])) {
+            $seconds = (intval($arr[0]) * 60 + intval($arr[1])) * 60 + floatval($arr[2]);
+        } elseif (isset($arr[1])) {
+            $seconds = intval($arr[0]) * 60 + floatval($arr[1]);
+        } else {
+            $seconds = floatval($arr[0]);
+        }
+
+        return $sign * (($days * 86400) + $seconds);
     }
 
     /**

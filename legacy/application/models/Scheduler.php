@@ -552,7 +552,7 @@ final class Application_Model_Scheduler
             $itemEndDT = $this->findEndTime($itemStartDT, $item->getDbClipLength());
             // If the track has already ended, don't change it.
             if ($itemEndDT < $now) {
-                $itemStartDT = $itemEndDT;
+                $itemStartDT = $this->findTimeDifference($itemEndDT, $this->crossfadeDuration);
 
                 continue;
             }
@@ -560,7 +560,7 @@ final class Application_Model_Scheduler
             $item->setDbStarts($itemStartDT)
                 ->setDbEnds($itemEndDT);
 
-            $itemStartDT = $itemEndDT;
+            $itemStartDT = $this->findTimeDifference($itemEndDT, $this->crossfadeDuration);
         }
 
         $schedule->save($this->con);
